@@ -1,0 +1,116 @@
+// from https://github.com/lio-wong/msa-cogsci-2025-data/blob/main/example-scenarios/e1-e2/biathlon.txt
+var modelName = 'biathlon';
+
+var model = function() {
+    var mean = function(arr) { return sum(arr) / arr.length; };
+
+    // BACKGROUND KNOWLEDGE
+    // Intrinsic strength is an underlying attribute of a given athlete that varies somewhat widely from athlete to athlete.
+    var intrinsic_strength = mem(function ({athlete}) {
+      // We'll imagine that players tend to be weak, average, or strong, and uniformly around that.
+      var parameter_weak_prior = 0.33;
+      var parameter_average_prior = 0.33;
+      var parameter_strong_prior = 0.34;
+
+      // On an arbitrary scale centered around 100.
+      var weak_mean = 80;
+      var average_mean = 100;
+      var strong_mean = 140;
+      var parameter_intrinsic_strength_variance = 10;
+
+      var parameter_intrinsic_strength_average = categorical({ps: [parameter_weak_prior, parameter_average_prior, parameter_strong_prior],
+      vs: [weak_mean, average_mean, strong_mean]});
+
+      return Math.max(gaussian(parameter_intrinsic_strength_average ,  parameter_intrinsic_strength_variance), 0);
+    })
+
+   // An athlete's intrinsic strength ranking out of n other athletes is the number of other athletes we might expect them to be stronger than out of N total random athletes.
+    var intrinsic_strength_rank = function({athlete, out_of_n_athletes}) {
+        // Generate out_of_n_athletes - 1 other random athlete IDs
+        var random_athlete_ids = mapN(function(x) {return uniform(0, 1000)}, out_of_n_athletes - 1)
+
+        // Total number of random other athletes this athlete is stronger than.
+        return sum(map(
+            function(random_athlete_id) {
+              return intrinsic_strength({athlete: athlete}) > intrinsic_strength({athlete: random_athlete_id})}, random_athlete_ids))
+    }
+
+    // An athlete's shooting accuracy varies from round to round.
+    var accuracy_at_shooting_in_round = mem(function({athlete, round}) {
+     var parameter_low_accuracy_prior =
+          intrinsic_strength(athlete) > 120 ? 0.05 :
+               intrinsic_strength(athlete) < 80 ?  0.8 :
+                                                     0.2;
+      var parameter_moderate_accuracy_prior = intrinsic_strength(athlete) > 120 ? 0.15 :
+               intrinsic_strength(athlete) < 80 ?  0.15 :
+                                                        0.6;
+      var parameter_extra_high_accuracy_prior = intrinsic_strength(athlete) > 120 ? 0.8 :
+               intrinsic_strength(athlete) < 80 ?  0.05 :
+                                                        0.2;
+
+      var low_accuracy_average = 30;
+      var moderate_accuracy_average = 60;
+      var extra_high_accuracy_average = 90;
+      var accuracy_variance = 10;
+
+      var this_player_accuracy_average = categorical({ps: [parameter_low_accuracy_prior, parameter_moderate_accuracy_prior, parameter_extra_high_accuracy_prior],
+      vs: [low_accuracy_average, moderate_accuracy_average, extra_high_accuracy_average]});
+
+      return Math.min(Math.max(gaussian(this_player_accuracy_average, accuracy_variance), 0), 100)
+    })
+
+    var athlete_speed_in_round = mem(function({athlete, round}) {
+      return intrinsic_strength({athlete : athlete});
+    })
+
+    var team_biathalon_score_in_round = function({team, round}) {
+      var average_team_speed = mean(map(function(athlete) { return athlete_speed_in_round({athlete: athlete, round: round}) }, team));
+      var average_shooting_accuracy = mean(map(function(athlete) { return accuracy_at_shooting_in_round({athlete: athlete, round: round}) }, team));
+      return average_team_speed + average_shooting_accuracy;
+    }
+
+    var beat = function({team1, team2, round}){
+      return team_biathalon_score_in_round({team: team1, round: round}) > team_biathalon_score_in_round({team: team2, round: round})
+    }
+
+    var lost = function({team1, team2, round}){
+      return !beat({team1: team1, team2: team2, round: round})
+    }
+
+    var who_would_win_by_how_much = function({team1, team2, round}) {
+      var num_future_rounds_to_simulate = 100;
+      var random_future_round_ids = mapN(function(x) {return uniform(round+1, 1000)}, num_future_rounds_to_simulate);
+      var simulated_rounds_won_by_team_2 = sum(map(
+            function(random_future_round_id) {
+              return lost({team1: team1, team2: team2, round: random_future_round_id})}, random_future_round_ids))
+      return simulated_rounds_won_by_team_2 / num_future_rounds_to_simulate;
+    }
+
+    // CONDITIONS
+    condition(beat({team1: ['billy', 'emery'], team2: ['alice', 'sam'], round: 1}))
+    condition(beat({team1: ['billy', 'drew'], team2: ['alice', 'lou'], round: 2}))
+    condition(beat({team1: ['billy', 'ness'], team2: ['alice', 'casey'], round: 3}))
+    condition(lost({team1: ['billy', 'emery'], team2: ['alice', 'sam'], round: 4}))
+
+    return {
+        query1: intrinsic_strength_rank({athlete: 'billy', out_of_n_athletes: 100}),
+        query2: intrinsic_strength_rank({athlete: 'emery', out_of_n_athletes: 100}),
+        query3: intrinsic_strength_rank({athlete: 'alice', out_of_n_athletes: 100}),
+        query4: accuracy_at_shooting_in_round({athlete: 'billy', round: 4}),
+        query5: accuracy_at_shooting_in_round({athlete: 'emery', round: 4}),
+        query6: accuracy_at_shooting_in_round({athlete: 'alice', round: 4}),
+        query7: who_would_win_by_how_much({team1: ['billy', 'emery'], team2: ['drew', 'casey'], round: 5}),
+        query8: who_would_win_by_how_much({team1: ['billy', 'alice'], team2: ['emery', 'sam'], round: 6})
+    }
+}
+
+var queryLabels = {
+  query1: 'Billy rank (out of 100)',
+  query2: 'Emery rank (out of 100)',
+  query3: 'Alice rank (out of 100)',
+  query4: 'Billy accuracy round 4 (%)',
+  query5: 'Emery accuracy round 4 (%)',
+  query6: 'Alice accuracy round 4 (%)',
+  query7: 'P(team2 wins) Billy+Emery vs Drew+Casey',
+  query8: 'P(team2 wins) Billy+Alice vs Emery+Sam'
+};

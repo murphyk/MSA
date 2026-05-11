@@ -1,0 +1,18 @@
+// Driver script: expects `model`, `queryLabels`, and `modelName` to be defined
+// by a model file passed before this one on the webppl CLI.
+// Reads N and METHOD from environment variables (defaults: 100, 'rejection').
+// Emits JSON between markers so the host wrapper can write the files.
+
+var n = JSON.parse(process.env.N || '100');
+var method = process.env.METHOD || 'rejection';
+
+var posterior = Infer({model: model, method: method, samples: n});
+var rawSamples = map(function(s) { return s.value; }, posterior.samples);
+
+display('__MODEL_NAME__:' + modelName);
+display('__SAMPLES_BEGIN__');
+display(JSON.stringify(rawSamples));
+display('__SAMPLES_END__');
+display('__QUERIES_BEGIN__');
+display(JSON.stringify(queryLabels));
+display('__QUERIES_END__');
