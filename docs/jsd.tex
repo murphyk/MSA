@@ -1,0 +1,163 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{hyperref}
+\usepackage{booktabs}
+
+\title{Sampling-noise floor of the Jensen--Shannon distance \\
+       between two empirical histograms}
+\author{}
+\date{}
+
+\newtheorem{proposition}{Proposition}
+
+\begin{document}
+\maketitle
+
+\section{Setup}
+
+Let $P$ be a fixed distribution on $K$ bins with PMF $p_1,\dots,p_K$
+($\sum_k p_k = 1$). Draw two independent samples $D_1,D_2$ of size
+$N$ each from $P$, and let
+\[
+  \hat p_k = \frac{1}{N}\sum_{x\in D_1}\mathbf{1}\{x\in \text{bin }k\},
+  \qquad
+  \hat q_k = \frac{1}{N}\sum_{x\in D_2}\mathbf{1}\{x\in \text{bin }k\}
+\]
+be the empirical PMFs. Define the midpoint
+$\hat m_k = (\hat p_k + \hat q_k)/2$ and the
+Jensen--Shannon divergence (in bits)
+\[
+  \mathrm{JS}(\hat p,\hat q)
+  \;=\;
+  \tfrac12\,\mathrm{KL}(\hat p \,\|\, \hat m)
+  +\tfrac12\,\mathrm{KL}(\hat q \,\|\, \hat m),
+\]
+and the JS \emph{distance} $d \;=\; \sqrt{\mathrm{JS}(\hat p,\hat q)}\in[0,1]$.
+
+Our question: under the null hypothesis that $D_1$ and $D_2$ come from the
+same distribution, what is $\mathbb{E}[d]$?
+
+\section{Result}
+
+\begin{proposition}\label{prop:main}
+For $N$ large and the two samples drawn iid from a common distribution
+with $K$ bins,
+\[
+  \boxed{\;\mathbb{E}[d]
+  \;\approx\;
+  \sqrt{\dfrac{K-\tfrac32}{4\,N\,\ln 2}}\;}.
+\]
+\end{proposition}
+
+For $N=1000$ and $K=30$, this gives
+\(
+\sqrt{28.5 / (4000\ln 2)} \approx 0.101,
+\)
+which matches the empirical floor we observe in our experiments
+(values in the range $0.10$--$0.12$ across queries).
+
+\section{Proof}
+
+\paragraph{Step 1: quadratic expansion of JS divergence.}
+Write $\delta_k = \hat p_k - \hat q_k$, so that
+$\hat p_k - \hat m_k = \delta_k/2$ and
+$\hat q_k - \hat m_k = -\delta_k/2$. A second-order Taylor expansion of
+the KL divergence around its second argument gives
+\[
+  \mathrm{KL}(r \,\|\, s) \;=\; \frac{1}{\ln 2}\sum_k
+  \left[(r_k-s_k) + \tfrac{(r_k-s_k)^2}{2s_k} + O\!\big((r_k-s_k)^3\big)\right],
+\]
+where the linear term drops out because $\sum_k r_k=\sum_k s_k=1$. Hence
+\begin{align*}
+  \mathrm{KL}(\hat p \,\|\, \hat m) +
+  \mathrm{KL}(\hat q \,\|\, \hat m)
+  &\approx
+  \frac{1}{2\ln 2}
+  \sum_k \frac{(\delta_k/2)^2 + (\delta_k/2)^2}{\hat m_k}
+  \\&=\;
+  \frac{1}{4\ln 2}\sum_k \frac{\delta_k^2}{\hat m_k},
+\end{align*}
+and therefore
+\begin{equation}\label{eq:quadratic}
+  \mathrm{JS}(\hat p,\hat q)
+  \;\approx\;
+  \frac{1}{8\ln 2}\sum_k \frac{\delta_k^2}{\hat m_k}.
+\end{equation}
+
+\paragraph{Step 2: expectation.}
+Under the null, $\mathbb{E}[\delta_k]=0$ and $\hat m_k \to p_k$ in
+probability. Moreover, $\hat p_k$ and $\hat q_k$ are independent, each
+$\mathrm{Binomial}(N,p_k)/N$, so
+\[
+  \mathbb{E}[\delta_k^2] \;=\; \mathrm{Var}(\hat p_k) + \mathrm{Var}(\hat q_k)
+  \;=\; \frac{2\,p_k(1-p_k)}{N}.
+\]
+Plugging into~\eqref{eq:quadratic},
+\begin{equation}\label{eq:EJS}
+  \mathbb{E}[\mathrm{JS}]
+  \;\approx\;
+  \frac{1}{8\ln 2}\sum_k \frac{2\,p_k(1-p_k)/N}{p_k}
+  \;=\;
+  \frac{1}{4N\ln 2}\sum_k (1-p_k)
+  \;=\;
+  \frac{K-1}{4N\ln 2}.
+\end{equation}
+This expectation depends only on $K$ and $N$ --- not on the shape of $P$.
+
+\paragraph{Step 3: from divergence to distance.}
+The normalized statistic
+\[
+  T \;=\; \frac{N}{2}\sum_k \frac{\delta_k^2}{p_k}
+\]
+is asymptotically $\chi^2_{K-1}$ distributed: the differences
+$\delta_k/\sqrt{2p_k/N}$ are approximately standard normal and satisfy
+the single linear constraint $\sum_k \delta_k = 0$. Combining with
+\eqref{eq:quadratic} and $\hat m_k \to p_k$,
+\[
+  \mathrm{JS}\;\approx\; \frac{T}{4N\ln 2},
+\]
+so
+\[
+  d \;=\; \sqrt{\mathrm{JS}} \;\approx\;
+  \frac{\sqrt{T}}{\sqrt{4N\ln 2}}
+  \;\sim\;
+  \frac{\sqrt{\chi^2_{K-1}}}{\sqrt{4N\ln 2}}.
+\]
+For moderate--large $K$, the chi distribution concentrates with
+\(\mathbb{E}\!\left[\sqrt{\chi^2_\nu}\right] \approx \sqrt{\nu-\tfrac12}\),
+hence
+\[
+  \mathbb{E}[d] \;\approx\; \sqrt{\frac{K-\tfrac32}{4N\ln 2}}.
+\]
+\qed
+
+\section{Discussion}
+
+\paragraph{Scaling.}
+The floor decays as $1/\sqrt{N}$ and grows as $\sqrt{K}$. Doubling $N$
+shrinks the typical JS distance by $\sqrt{2}$; doubling the bin count
+inflates it by roughly $\sqrt{2}$.
+
+\paragraph{Numerical values.}
+\begin{center}
+\begin{tabular}{rrl}
+\toprule
+$N$ & $K$ & $\mathbb{E}[d]$ \\
+\midrule
+$1000$  & $20$  & $0.083$ \\
+$1000$  & $30$  & $0.101$ \\
+$1000$  & $100$ & $0.188$ \\
+$10000$ & $30$  & $0.032$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Practical implication.}
+A JS distance near the value in Proposition~\ref{prop:main} is
+consistent with the two samples coming from the same distribution;
+nothing can be concluded from it.  A useful per-query test is the
+two-sample Kolmogorov--Smirnov statistic on the raw samples (no
+binning), or a permutation test on Wasserstein distance.
+
+\end{document}

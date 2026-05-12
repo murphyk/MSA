@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MSA workflow</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+         max-width: 920px; margin: 2em auto; padding: 0 1.2em; line-height: 1.5; color: #222; }
+  h1   { margin-bottom: 0.1em; }
+  h2   { margin-top: 2em; border-bottom: 1px solid #ddd; padding-bottom: 0.2em; }
+  h3   { margin-top: 1.5em; }
+  code, pre { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 0.93em; }
+  pre  { background: #f5f5f5; padding: 0.8em 1em; border-radius: 4px; overflow-x: auto; }
+  code { background: #f5f5f5; padding: 0.1em 0.3em; border-radius: 3px; }
+  pre code { background: none; padding: 0; }
+  .note { background: #fff8e1; border-left: 4px solid #f1c40f; padding: 0.6em 1em; margin: 1em 0; }
+  table { border-collapse: collapse; margin: 1em 0; }
+  th, td { border: 1px solid #ccc; padding: 0.4em 0.8em; text-align: left; }
+  th { background: #f0f0f0; }
+</style>
+</head>
+<body>
+
+<h1>MSA workflow</h1>
+<p>Pipeline for running probabilistic programs in WebPPL and comparing the resulting posterior samples across model variants.</p>
+
+<h2>Directory layout</h2>
+<pre><code>MSA/
+├── models/
+│   └── gold/                 # WebPPL source for each "gold" model
+│       ├── biathlon.wppl
+│       ├── canoe.wppl
+│       ├── diving.wppl
+│       ├── exam.wppl
+│       └── tug.wppl
+├── get_samples.wppl          # WebPPL inference driver (concatenated with a model)
+├── get_samples.js            # Node wrapper: invokes webppl, writes JSON
+├── compare_samples.py        # Compare two sample files, render figures + HTML
+├── samples/
+│   └── {method}/             # One subdir per "method" label (gold, gold1, ...)
+│       └── {model}[_e{expt}].json
+├── comparisons/
+│   └── {method1}_vs_{method2}/
+│       └── {model}[_e{expt}]/
+│           ├── query{q}.png
+│           ├── jsd.png
+│           └── comparison.html
+└── docs/
+    ├── workflow.html         # this file
+    └── jsd.tex               # derivation of the JS-distance noise floor
+</code></pre>
+
+<h2>Stage 1: model definition</h2>
+
+<p>Each <code>.wppl</code> file under <code>models/{method}/</code> defines three top-level names:</p>
+<ul>
+  <li><code>modelName</code> — short identifier (e.g. <code>'tug'</code>).</li>
+  <li><code>model</code> — a function with no arguments, returning a dict of query values. Internally it calls <code>condition(...)</code> to encode observed evidence.</li>
+  <li><code>queryLabels</code> — a dict mapping each query key (e.g. <code>query1</code>) to a human-readable description.</li>
+</ul>
+<p>The model file does <em>not</em> run inference itself; that's the driver's job.</p>
+
+<h2>Stage 2: sampling</h2>
+
+<h3><code>get_samples.wppl</code> &mdash; the inference driver</h3>
+<p>Reads <code>N</code> and <code>METHOD</code> from process environment, runs <code>Infer({model, method, samples: N})</code>, and emits two blocks to stdout between marker lines:</p>
+<pre><code>__SAMPLES_BEGIN__
+[ {query1: ..., query2: ...}, ... ]
+__SAMPLES_END__
+__QUERIES_BEGIN__
+{ "query1": "...", ... }
+__QUERIES_END__</code></pre>
+
+<h3><code>get_samples.js</code> &mdash; the Node wrapper</h3>
+<p>Concatenates the chosen model file with <code>get_samples.wppl</code> into a temp file (WebPPL's CLI accepts only one program file), invokes <code>webppl</code> with <code>--random-seed</code>, parses the marker blocks, and writes a JSON file of the form:</p>
+<pre><code>{
+  "queries": {"query1": "Bob rank (out of 100)", ...},
+  "samples": [{"query1": 62, "query2": 93, ...}, ...]
+}</code></pre>
+
+<p>Current invocation:</p>
+<pre><code>node get_samples.js --model {biathlon|canoe|diving|exam|tug} \
+                    [--n N]       (default 1000)            \
+                    [--method M]  (default rejection)        \
+                    [--seed S]    (default 0)                \
+                    [--outdir D]  (default .)</code></pre>
+
+<div class="note">
+<strong>Note on path layout.</strong> The current <code>get_samples.js</code> still
+expects model files under <code>gold_models/</code> and writes filenames of the form
+<code>{model}_n{n}_seed{seed}.json</code>. After the recent restructure
+(models moved to <code>models/gold/</code>, sample files renamed to
+<code>{model}[_e{expt}].json</code>), the wrapper needs a small update before it can
+regenerate sample files in the locations <code>compare_samples.py</code> reads from.
+Existing <code>samples/{gold,gold1}/tug.json</code> still work fine as comparison inputs.
+</div>
+
+<h3>Webppl quirks worth knowing</h3>
+<ul>
+  <li>WebPPL's CLI takes <em>one</em> program file. Multiple files must be concatenated externally.</li>
+  <li>Inside <code>.wppl</code>, Node's <code>require</code> is not in scope — file I/O must happen in the host wrapper.</li>
+  <li><code>parseInt</code> and <code>Number</code> silently abort the CPS-transformed program. Use <code>JSON.parse</code> or arithmetic coercion (e.g. <code>s * 1</code>) instead.</li>
+  <li>Methods supported by <code>Infer</code>: <code>rejection</code> (exact, slow for tight conditions), <code>MCMC</code>, <code>SMC</code>, etc.</li>
+</ul>
+
+<h2>Stage 3: comparison</h2>
+
+<h3><code>compare_samples.py</code></h3>
+<pre><code>python compare_samples.py --model {model}      \
+                          --method1 {m1}       \
+                          --method2 {m2}       \
+                          [--expt {expt}]      \
+                          [--bins 30]</code></pre>
+
+<p>Reads <code>samples/{m1}/{model}[_e{expt}].json</code> and
+<code>samples/{m2}/{model}[_e{expt}].json</code>, then for each query writes a
+2&times;1 panel histogram and computes:</p>
+<ul>
+  <li><strong>Jensen&ndash;Shannon distance</strong> &mdash; bin-based, in <code>[0,1]</code> bits. 0 = identical histograms; 1 = disjoint supports.</li>
+  <li><strong>Wasserstein (Earth-Mover) distance</strong> &mdash; on raw samples, in the unit of the query.</li>
+</ul>
+
+<p>Outputs are written to <code>comparisons/{m1}_vs_{m2}/{model}[_e{expt}]/</code>:</p>
+<ul>
+  <li><code>query{q}.png</code> &mdash; one per query, top panel = <code>m1</code>, bottom panel = <code>m2</code>, shared axes.</li>
+  <li><code>jsd.png</code> &mdash; bar chart of JS distance per query.</li>
+  <li><code>comparison.html</code> &mdash; index page embedding all figures.</li>
+</ul>
+
+<h2>Stage 4: interpreting JS distance</h2>
+
+<p>The JS distance between two empirical histograms drawn from the
+<em>same</em> distribution has a non-zero expectation that depends only on
+the number of bins <i>K</i> and the sample size <i>N</i>:</p>
+
+<p style="text-align:center; font-size:1.1em;">
+  E[JS dist] &asymp; &radic;<span style="text-decoration: overline;">(K&minus;1.5) / (4 N ln 2)</span>
+</p>
+
+<p>For <i>N</i>=1000, <i>K</i>=30 (our default) this evaluates to <strong>~0.10</strong>,
+which is exactly the floor observed when comparing two independent
+gold-vs-gold runs (<code>gold</code> vs <code>gold1</code>). See
+<a href="jsd.tex"><code>docs/jsd.tex</code></a> for the derivation.</p>
+
+<p>The implication: <strong>JS distance &lt; ~0.10 is consistent with the same
+distribution at these settings, and is not itself evidence of agreement
+or disagreement</strong>. Use it as a relative magnitude across queries,
+not as an absolute test.</p>
+
+<h2>Recommended P-vs-Q test</h2>
+
+<p>If the goal is to decide whether two methods produce samples from the
+same posterior (per query), a few options are stronger than thresholding
+JS distance:</p>
+
+<table>
+<tr><th>Test</th><th>What it does</th><th>When to use</th></tr>
+<tr>
+  <td><strong>Two-sample Kolmogorov&ndash;Smirnov</strong> (<code>scipy.stats.ks_2samp</code>)</td>
+  <td>Largest gap between empirical CDFs of the raw samples. No binning. Returns a p-value automatically calibrated for <i>N</i>.</td>
+  <td>Default per-query test. Cheap, parameter-free.</td>
+</tr>
+<tr>
+  <td><strong>Permutation test on Wasserstein distance</strong></td>
+  <td>Compute observed Wasserstein on raw samples; pool the two samples and randomly relabel many times to build a null distribution; report p-value.</td>
+  <td>When you want a metric whose magnitude is interpretable (in the unit of the query) plus calibrated p-value.</td>
+</tr>
+<tr>
+  <td><strong>Anderson&ndash;Darling 2-sample</strong> (<code>scipy.stats.anderson_ksamp</code>)</td>
+  <td>Like KS but weights tails more.</td>
+  <td>When tail behaviour matters (e.g. rare-event queries).</td>
+</tr>
+<tr>
+  <td><strong>MMD with Gaussian kernel + permutation</strong></td>
+  <td>Kernel two-sample test; multivariate-friendly.</td>
+  <td>If you want to test joint agreement across queries, not just marginal.</td>
+</tr>
+</table>
+
+<h3>On the gold-vs-gold yardstick</h3>
+
+<p>The current experiment (<code>gold</code> vs <code>gold1</code>) is a useful
+sanity check: it measures the noise floor under the null. But because
+<em>any</em> reasonable test should fail to reject in this case, the
+<em>magnitude</em> of the gold-vs-gold gap mostly tells you about your
+test's variance, not its discriminative power. A more informative
+yardstick is to:</p>
+<ol>
+  <li>Estimate the null distribution of your chosen test statistic by
+      splitting one large gold run into halves repeatedly (or running
+      with many seeds) &mdash; this gives a calibrated cutoff at any
+      desired false-positive rate.</li>
+  <li>Apply the same statistic to <code>gold</code> vs whatever alternative
+      method you actually care about. Compare to the null cutoff.</li>
+</ol>
+<p>If you only need one number, <code>ks_2samp</code> per query plus a
+Bonferroni-corrected family p-value is probably the cleanest move.</p>
+
+</body>
+</html>

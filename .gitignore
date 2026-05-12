@@ -1,9 +1,8 @@
 .DS_Store
 
-# Generated sample files
-*_samples.json
-*_queries.json
-gold_samples/
-
-# Generated figures
-figs/
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk
