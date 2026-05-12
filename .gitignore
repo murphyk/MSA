@@ -1,2 +1,9 @@
+.DS_Store
+
+# Generated sample files
 *_samples.json
 *_queries.json
+gold_samples/
+
+# Generated figures
+figs/
