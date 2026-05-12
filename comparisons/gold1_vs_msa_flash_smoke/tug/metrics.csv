@@ -1,0 +1,7 @@
+query,label,wasserstein,w_norm,w_std,jsd,ks_stat,ks_p,perm_p
+query1,"Out of 100 random athletes, where do you think Bob ranks in terms of intrinsic strength?",2.418,0.024424242424242425,0.08865999004589496,0.1311463286391354,0.056,0.08689937254547132,0.054945054945054944
+query2,"Out of 100 random athletes, where do you think Mary ranks in terms of intrinsic strength?",6.99,0.0706060606060606,0.251831931002684,0.14915903615343407,0.112,6.990901300156074e-06,0.000999000999000999
+query3,"On a percentage scale from 0 to 100%, how much effort do you think Jim put into the third match?",18.36906889924823,0.2234647084506388,0.9393002993324007,0.5100059707602881,0.484,1.6742141653587323e-106,0.000999000999000999
+query4,"On a percentage scale from 0 to 100%, how much effort do you think Bob put into the first match?",11.96239677649287,0.14862203847857255,0.587241386144855,0.33692085267547395,0.288,6.059523534333059e-37,0.000999000999000999
+query5,"In a new match later this same day between Bob and Mary (Team 1) and Jim and Sue (Team 2), who would win and by how much?",0.09853999999999999,0.09953535353535352,0.4093303250522363,0.28788521573371,0.245,9.520860663442335e-27,0.000999000999000999
+query6,"In a new match later this same day between Sue and Paul (Team 1) and Jim and Bob (Team 2), who would win and by how much?",0.10745999999999999,0.10745999999999999,0.37223232897469755,0.33801007542408434,0.262,1.425495606226295e-30,0.000999000999000999

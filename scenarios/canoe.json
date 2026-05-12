@@ -1,31 +1,29 @@
 {
-  "scenario": [
-    "BACKGROUND",
+  "background": [
     "In this event, the athletes are competing in a series of canoe races. In each race, the team that wins depends on the average speed with which the athletes are able to row, based on their intrinsic strength modulated by other factors including how much effort they put in to that race.",
     "Athletes compete either individually or as a team.",
-    "All races take place on the same day.",
-    "",
-    "CONDITIONS",
+    "All races take place on the same day."
+  ],
+  "conditions": [
     "In the first race, Alice beat Casey.",
     "In the second race, Alice and Ness beat Casey and Max.",
-    "In the third race, Max and Alice lost to Casey and Ness.",
-    "",
-    "QUERIES",
+    "In the third race, Max and Alice lost to Casey and Ness."
+  ],
+  "query": [
     "Query 1: Out of 100 random athletes, where do you think Alice ranks in terms of intrinsic strength?",
     "Query 2: On a percentage scale from 0 to 100%, how much effort do you think Max put into the third race?",
     "Query 3: In a new race later this same day between Alice and Ness (Team 1) and Max and Taylor (Team 2), who would win and by how much?",
     "Query 4: In a new race later this same day between Max and Casey (Team 1) and Ness and Willow (Team 2), who would win and by how much?"
   ],
-  "language_to_code": [
-    "// CONDITIONS",
+  "parsed_conditions": [
     "In the first race, Alice beat Casey.",
     "  condition(beat({team1: ['alice'], team2: ['casey'], race: 1}))",
     "In the second race, Alice and Ness beat Casey and Max.",
     "  condition(beat({team1: ['alice', 'ness'], team2: ['casey', 'max'], race: 2}))",
     "In the third race, Max and Alice lost to Casey and Ness.",
-    "  condition(lost({team1: ['max', 'alice'], team2: ['casey', 'ness'], race: 3}))",
-    "",
-    "// QUERIES",
+    "  condition(lost({team1: ['max', 'alice'], team2: ['casey', 'ness'], race: 3}))"
+  ],
+  "parsed_queries": [
     "Query 1: Out of 100 random athletes, where do you think Alice ranks in terms of intrinsic strength?",
     "   intrinsic_strength_rank({athlete: 'alice', out_of_n_athletes: 100})",
     "Query 2: On a percentage scale from 0 to 100%, how much effort do you think Max put into the third race?",

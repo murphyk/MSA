@@ -6,3 +6,7 @@
 *.out
 *.fls
 *.fdb_latexmk
+.env
+.claude/
+__pycache__/
+intermediates/

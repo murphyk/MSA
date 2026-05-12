@@ -66,10 +66,15 @@ def main():
     with open(file2) as f:
         d2 = json.load(f)
 
-    if d1['queries'] != d2['queries']:
-        raise SystemExit(f"Query sets differ between {file1} and {file2}")
-
-    queries = d1['queries']
+    if set(d1['queries']) != set(d2['queries']):
+        raise SystemExit(
+            f"Query keys differ between {file1} and {file2}:\n"
+            f"  only in {file1}: {set(d1['queries']) - set(d2['queries'])}\n"
+            f"  only in {file2}: {set(d2['queries']) - set(d1['queries'])}")
+    # Prefer the longer human-readable label when they differ
+    queries = {k: (d1['queries'][k] if len(d1['queries'][k]) >= len(d2['queries'][k])
+                   else d2['queries'][k])
+               for k in d1['queries']}
     samples1 = d1['samples']
     samples2 = d2['samples']
 
@@ -189,8 +194,6 @@ def main():
                 "th{background:#f0f0f0}td:nth-child(2){text-align:left}</style>\n")
         f.write("</head><body>\n")
         f.write(f"<h1>{args.model} &mdash; {args.method1} vs {args.method2}</h1>\n")
-        f.write(f"<img src='{os.path.basename(pval_path)}' alt='p-value distribution'>\n")
-        f.write(f"<img src='{os.path.basename(jsd_path)}' alt='JS distance summary'>\n")
         f.write("<h2>Per-query metrics</h2>\n<table>\n")
         f.write("<tr><th>query</th><th>label</th><th>W</th><th>W/range</th><th>W/sd</th>"
                 "<th>JS</th><th>KS stat</th><th>KS p</th><th>perm p</th></tr>\n")
@@ -202,6 +205,8 @@ def main():
                     f"<td>{r['ks_stat']:.3f}</td><td>{r['ks_p']:.3f}</td>"
                     f"<td>{r['perm_p']:.3f}</td></tr>\n")
         f.write("</table>\n")
+        f.write(f"<img src='{os.path.basename(pval_path)}' alt='p-value distribution'>\n")
+        f.write(f"<img src='{os.path.basename(jsd_path)}' alt='JS distance summary'>\n")
         for name in png_names:
             f.write(f"<img src='{name}' alt='{name}'>\n")
         f.write("</body></html>\n")

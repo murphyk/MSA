@@ -9,7 +9,6 @@ var method = process.env.METHOD || 'rejection';
 var posterior = Infer({model: model, method: method, samples: n});
 var rawSamples = map(function(s) { return s.value; }, posterior.samples);
 
-display('__MODEL_NAME__:' + modelName);
 display('__SAMPLES_BEGIN__');
 display(JSON.stringify(rawSamples));
 display('__SAMPLES_END__');

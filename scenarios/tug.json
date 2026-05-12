@@ -1,17 +1,16 @@
 {
-  "scenario": [
-    "BACKGROUND",
+  "background": [
     "In this event, the athletes are competing in matches of tug-of-war. In each round, the team that wins the round depends on how hard the athletes collectively pull, based on their intrinsic strength modulated by other factors including how much effort they put in to that round.",
     "Athletes compete either individually or as a team.",
-    "All matches take place on the same day.",
-    "",
-    "CONDITIONS",
+    "All matches take place on the same day."
+  ],
+  "conditions": [
     "In the first match, Bob and Mary beat Tom and Sue.",
     "In the second match, Sue beat Mary.",
     "In the third match, Bob and Sue lost to Tom and Jim. ",
-    "In the fourth match, Jim beat Bob.",
-    "",
-    "QUERIES",
+    "In the fourth match, Jim beat Bob."
+  ],
+  "query": [
     "Query 1: Out of 100 random athletes, where do you think Bob ranks in terms of intrinsic strength?",
     "Query 2: Out of 100 random athletes, where do you think Mary ranks in terms of intrinsic strength?",
     "Query 3: On a percentage scale from 0 to 100%, how much effort do you think Jim put into the third match?",
@@ -19,8 +18,7 @@
     "Query 5: In a new match later this same day between Bob and Mary (Team 1) and Jim and Sue (Team 2), who would win and by how much?",
     "Query 6: In a new match later this same day between Sue and Paul (Team 1) and Jim and Bob (Team 2), who would win and by how much? "
   ],
-  "language_to_code": [
-    "// CONDITIONS",
+  "parsed_conditions": [
     "In the first match, Bob and Mary beat Tom and Sue.",
     "  condition(beat({team1: ['bob', 'mary'], team2: ['tom', 'sue'], match: 1}))",
     "In the second match, Sue beat Mary.",
@@ -28,9 +26,9 @@
     "In the third match, Bob and Sue lost to Tom and Jim. ",
     "  condition(lost({team1: ['bob', 'sue'], team2: ['tom', 'jim'], match: 3}))",
     "In the fourth match, Jim beat Bob.",
-    "  condition(beat({team1: ['jim'], team2: ['bob'], match: 4}))",
-    "",
-    "// QUERIES",
+    "  condition(beat({team1: ['jim'], team2: ['bob'], match: 4}))"
+  ],
+  "parsed_queries": [
     "Query 1: Out of 100 random athletes, where do you think Bob ranks in terms of intrinsic strength? ",
     "  intrinsic_strength_rank({athlete: 'bob', out_of_n_athletes: 100})",
     "Query 2: Out of 100 random athletes, where do you think Mary ranks in terms of intrinsic strength?",

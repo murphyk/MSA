@@ -1,17 +1,16 @@
 {
-  "scenario": [
-    "BACKGROUND",
+  "background": [
     "In this event, teams of players are competing in rounds of a biathalon, a winter sport that combines cross-country skiing rounds and rifle shooting. In each round, the team that wins depends on the average speed with which the athletes are able to ski, based on their intrinsic strength, as well as each team member's shooting accuracy in that particular round.",
     "Athletes compete either individually or as a team.",
-    "All matches take place on the same day.",
-    "",
-    "CONDITIONS",
+    "All matches take place on the same day."
+  ],
+  "conditions": [
     "In the first round, Billy and Emery beat Alice and Sam.",
     "In the second round, Billy and Drew beat Alice and Lou.",
     "In the third round, Billy and Ness beat Alice and Casey.",
-    "In the fourth round, Billy and Emery lost to Alice and Sam.",
-    "",
-    "QUERIES",
+    "In the fourth round, Billy and Emery lost to Alice and Sam."
+  ],
+  "query": [
     "Query 1: Out of 100 random athletes, where do you think Billy ranks in terms of intrinsic strength?",
     "Query 2: Out of 100 random athletes, where do you think Emery ranks in terms of intrinsic strength?",
     "Query 3: Out of 100 random athletes, where do you think Alice ranks in terms of intrinsic strength?",
@@ -21,8 +20,7 @@
     "Query 7: In a new round later this same day between Billy and Emery (Team 1) and Drew and Casey (Team 2), who would win and by how much?",
     "Query 8: In a new round later this same day between Billy and Alice (Team 1) and Emery and Sam (Team 2), who would win and by how much?"
   ],
-  "language_to_code": [
-    "// CONDITIONS",
+  "parsed_conditions": [
     "In the first round, Billy and Emery beat Alice and Sam.",
     "  condition(beat({team1: ['billy', 'emery'], team2: ['alice', 'sam'], round: 1}))",
     "In the second round, Billy and Drew beat Alice and Lou.",
@@ -30,9 +28,9 @@
     "In the third round, Billy and Ness beat Alice and Casey.",
     "  condition(beat({team1: ['billy', 'ness'], team2: ['alice', 'casey'], round: 3}))",
     "In the fourth round, Billy and Emery lost to Alice and Sam.",
-    "  condition(lost({team1: ['billy', 'emery'], team2: ['alice', 'sam'], round: 4}))",
-    "",
-    "// QUERIES",
+    "  condition(lost({team1: ['billy', 'emery'], team2: ['alice', 'sam'], round: 4}))"
+  ],
+  "parsed_queries": [
     "Query 1: Out of 100 random athletes, where do you think Billy ranks in terms of intrinsic strength?",
     "  intrinsic_strength_rank({athlete: 'billy', out_of_n_athletes: 100})",
     "Query 2: Out of 100 random athletes, where do you think Emery ranks in terms of intrinsic strength?",

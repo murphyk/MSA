@@ -1,81 +1,106 @@
-// from https://github.com/lio-wong/msa-cogsci-2025-data/blob/main/example-scenarios/e1-e2/tug-of-war.txt
-var modelName = 'tug';
-
 var model = function() {
     // BACKGROUND KNOWLEDGE
-    var intrinsic_strength = mem(function ({athlete}) {
-      var parameter_intrinsic_strength_average = 100;
-      var parameter_intrinsic_strength_variance = 20;
-      return Math.max(gaussian(parameter_intrinsic_strength_average, parameter_intrinsic_strength_variance), 0)
-    })
+    // Intrinsic strength is an underlying attribute of a given athlete that varies from athlete to athlete. We can consider this as a continuous value that is constant for an athlete across all of their matches.
+    var intrinsic_strength = mem(function({athlete}) {
+        // Intrinsic strength is a continuous value, centered around 100 (arbitrary units).
+        var mean_strength = 100;
+        var variance = 20;
+        return Math.max(gaussian(mean_strength, variance), 0);
+    });
 
+    // An athlete's intrinsic strength ranking out of n other athletes is the number of other athletes we might expect them to be stronger than out of N total random athletes.
     var intrinsic_strength_rank = function({athlete, out_of_n_athletes}) {
-        var random_athlete_ids = mapN(function(x) {return uniform(0, 1000)}, out_of_n_athletes - 1)
-        return sum(map(
-            function(random_athlete_id) {
-              return intrinsic_strength({athlete: athlete}) > intrinsic_strength({athlete: random_athlete_id})}, random_athlete_ids))
-    }
+        // Generate out_of_n_athletes - 1 other random athlete IDs
+        var random_athlete_ids = mapN(function(x) {return uniform(0, 1000)}, out_of_n_athletes - 1);
+        
+        // Total number of random other athletes this athlete is stronger than.
+        return sum(map(function(random_athlete_id) {
+            return intrinsic_strength({athlete: athlete}) > intrinsic_strength({athlete: random_athlete_id});
+        }, random_athlete_ids));
+    };
 
+    // Athletes also vary in the effort that they put into any given match. Athletes can put in varying amounts of effort, which can be modeled as a percentage from 0 to 100%. Which effort level they exert might vary randomly, but could also be influenced by their underlying intrinsic strength.
     var effort_level_in_match = mem(function({athlete, match}) {
-      var strong_threshold = 140;
-      var weak_threshold = 90;
+        // Effort level is a percentage from 0 to 100%.
+        var strength = intrinsic_strength({athlete: athlete});
+        
+        // Stronger athletes might be more likely to put in high effort, weaker athletes might put in lower effort.
+        var low_effort_prior = strength > 120 ? 0.1 : (strength < 80 ? 0.6 : 0.3);
+        var moderate_effort_prior = strength > 120 ? 0.3 : (strength < 80 ? 0.3 : 0.4);
+        var high_effort_prior = strength > 120 ? 0.6 : (strength < 80 ? 0.1 : 0.3);
+        
+        var low_effort_mean = 40; // 40% effort
+        var moderate_effort_mean = 70; // 70% effort
+        var high_effort_mean = 90; // 90% effort
+        var effort_variance = 10;
+        
+        var effort_mean = categorical({
+            ps: [low_effort_prior, moderate_effort_prior, high_effort_prior],
+            vs: [low_effort_mean, moderate_effort_mean, high_effort_mean]
+        });
+        
+        return Math.min(Math.max(gaussian(effort_mean, effort_variance), 0), 100);
+    });
 
-      var parameter_low_effort_prior =
-          intrinsic_strength(athlete) > strong_threshold ? 0.05 :
-               intrinsic_strength(athlete) < weak_threshold ?  0.8 :
-                                                     0.2;
-      var parameter_moderate_effort_prior = intrinsic_strength(athlete) > strong_threshold ? 0.15 :
-               intrinsic_strength(athlete) < weak_threshold ?  0.15 :
-                                                        0.6;
-      var parameter_extra_high_effort_prior = intrinsic_strength(athlete) > strong_threshold ? 0.8 :
-               intrinsic_strength(athlete) < weak_threshold ?  0.05 :
-                                                        0.2;
+    // An athlete's pull force in a given match is determined at a base level by their intrinsic strength. Their effective pull force in a given match is modulated by their effort level, which acts as a percentage multiplier on their strength in this match.
+    var athlete_pull_force_in_match = mem(function({athlete, match}) {
+        // Pull force is intrinsic strength modulated by effort percentage.
+        var strength = intrinsic_strength({athlete: athlete});
+        var effort = effort_level_in_match({athlete: athlete, match: match});
+        return strength * (effort / 100);
+    });
 
-      var low_effort_average = 40;
-      var moderate_effort_average = 60;
-      var extra_high_effort_average = 80;
-      var effort_variance = 10;
+    // A team's collective pull force in a match is described in the background as how hard the athletes collectively pull, which can be modeled as the sum of the pull forces of the individual athletes on that team.
+    var team_pull_force_in_match = function({team, match}) {
+        // Team pull force is the sum of individual pull forces.
+        return sum(map(function(athlete) {
+            return athlete_pull_force_in_match({athlete: athlete, match: match});
+        }, team));
+    };
 
-      var effort_average = categorical({ps: [parameter_low_effort_prior, parameter_moderate_effort_prior, parameter_extra_high_effort_prior],
-      vs: [low_effort_average, moderate_effort_average, extra_high_effort_average]});
+    // A tug-of-war team beats another if their team's collective pull force is strictly greater than the opposing team's pull force in that match.
+    var beat = function({team1, team2, match}) {
+        return team_pull_force_in_match({team: team1, match: match}) > team_pull_force_in_match({team: team2, match: match});
+    };
 
-      return Math.min(Math.max(gaussian(effort_average, effort_variance), 0), 100)
-    })
+    // A tug-of-war team loses to another team if they did not beat that team in a given match.
+    var lost = function({team1, team2, match}) {
+        return !beat({team1: team1, team2: team2, match: match});
+    };
 
-    var effective_strength_in_match = mem(function({athlete, match}) {
-      var base_pulling_strength_in_match =  intrinsic_strength({athlete : athlete});
-      var average_effort = 50;
-      var strength_modulated_for_effort_level = (effort_level_in_match({athlete: athlete, match: match}) / average_effort) * base_pulling_strength_in_match;
-      return strength_modulated_for_effort_level;
-    })
-
-    var total_pulling_strength_for_team = function({team, match}) {
-      return sum(map(function(athlete) { return effective_strength_in_match({athlete: athlete, match: match}) }, team))
-    }
-
-    var beat = function({team1, team2, match}){
-      return total_pulling_strength_for_team({team: team1, match: match}) > total_pulling_strength_for_team({team: team2, match: match})
-    }
-
-    var lost = function({team1, team2, match}){
-      return !beat({team1: team1, team2: team2, match: match})
-    }
-
+    // To calculate who would win and by how much, we will calculate the likelihood that a team would win over another.
     var who_would_win_by_how_much = function({team1, team2, match}) {
-      var num_future_matches_to_simulate = 100;
-      var random_future_match_ids = mapN(function(x) {return uniform(match+1, 1000)}, num_future_matches_to_simulate);
-      var simulated_matches_won_by_team_2 = sum(map(
-            function(random_future_match_id) {
-              return lost({team1: team1, team2: team2, match: random_future_match_id})}, random_future_match_ids))
-      return simulated_matches_won_by_team_2 / num_future_matches_to_simulate;
-    }
+        // 0% is Team 1 would definitely win, 100% is Team 2 would definitely win, so we will just calculate the likelihood that team 2 would win here.
+        // Simulate random possible future matches based on random match IDs, starting with the ID of the current match to avoid any matches we've seen so far. We'll simulate out of 100 random matches.
+        var num_future_matches_to_simulate = 100;
+        var random_future_match_ids = mapN(function(x) {return uniform(match + 1, 1000)}, num_future_matches_to_simulate);
+        
+        // Calculate how many matches that team 2 would have won, meaning that team 1 lost.
+        var simulated_matches_won_by_team_2 = sum(map(function(random_future_match_id) {
+            return lost({team1: team1, team2: team2, match: random_future_match_id});
+        }, random_future_match_ids));
+        
+        // Return the likelihood that team 2 won.
+        return simulated_matches_won_by_team_2 / num_future_matches_to_simulate;
+    };
 
     // CONDITIONS
+    // In the first match, Bob and Mary beat Tom and Sue.
     condition(beat({team1: ['bob', 'mary'], team2: ['tom', 'sue'], match: 1}))
+    // In the second match, Sue beat Mary.
     condition(beat({team1: ['sue'], team2: ['mary'], match: 2}))
+    // In the third match, Bob and Sue lost to Tom and Jim. 
     condition(lost({team1: ['bob', 'sue'], team2: ['tom', 'jim'], match: 3}))
+    // In the fourth match, Jim beat Bob.
     condition(beat({team1: ['jim'], team2: ['bob'], match: 4}))
 
+    // QUERIES
+    // Query 1: Out of 100 random athletes, where do you think Bob ranks in terms of intrinsic strength?
+    // Query 2: Out of 100 random athletes, where do you think Mary ranks in terms of intrinsic strength?
+    // Query 3: On a percentage scale from 0 to 100%, how much effort do you think Jim put into the third match?
+    // Query 4: On a percentage scale from 0 to 100%, how much effort do you think Bob put into the first match?
+    // Query 5: In a new match later this same day between Bob and Mary (Team 1) and Jim and Sue (Team 2), who would win and by how much?
+    // Query 6: In a new match later this same day between Sue and Paul (Team 1) and Jim and Bob (Team 2), who would win and by how much? 
     return {
         query1: intrinsic_strength_rank({athlete: 'bob', out_of_n_athletes: 100}),
         query2: intrinsic_strength_rank({athlete: 'mary', out_of_n_athletes: 100}),
@@ -83,14 +108,5 @@ var model = function() {
         query4: effort_level_in_match({athlete: 'bob', match: 1}),
         query5: who_would_win_by_how_much({team1: ['bob', 'mary'], team2: ['jim', 'sue'], match: 5}),
         query6: who_would_win_by_how_much({team1: ['sue', 'paul'], team2: ['jim', 'bob'], match: 6})
-    }
+    };
 }
-
-var queryLabels = {
-  query1: 'Bob rank (out of 100)',
-  query2: 'Mary rank (out of 100)',
-  query3: 'Jim effort match 3 (%)',
-  query4: 'Bob effort match 1 (%)',
-  query5: 'P(team2 wins) Bob+Mary vs Jim+Sue',
-  query6: 'P(team2 wins) Sue+Paul vs Jim+Bob'
-};

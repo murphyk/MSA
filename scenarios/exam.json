@@ -1,21 +1,20 @@
 {
-  "scenario": [
-    "BACKGROUND",
+  "background": [
     "In this model, students are being evaluated for their science class, which has a two part exam that combines their performance on a written exam and a laboratory portion. These exams are completed in pairs, so sets of students collectively take evaluations.",
     "",
     "On each evaluation, the students will first take a written exam, which tests their intrinsic memorization abilities, and then are evaluated on a live laboratory portion. The live laboratory portion is notoriously finicky and performance is somewhat up to chance. ",
     "",
     "Their scores are based on the percentage of written exam questions they get correctly and how well they do on any given lab. Note that their intrinsic memorization abilities remain constant throughout all of their exams -- they neither get better nor worse at memorization across rounds.",
     "",
-    "Any pair of student's overall performance on any given evaluation is determined by the combined scores for each student on both the written and laboratory portion. The written and lab portions are weighted equally. ",
-    "",
-    "CONDITIONS",
+    "Any pair of student's overall performance on any given evaluation is determined by the combined scores for each student on both the written and laboratory portion. The written and lab portions are weighted equally. "
+  ],
+  "conditions": [
     "In the first evaluation, Barbara and Ajax passed.",
     "In the second evaluation, Barbara and Lou failed.",
     "In the third evaluation, Barbara and Casey passed.",
-    "In the fourth evaluation, Lou and Casey passed.",
-    "",
-    "QUERIES",
+    "In the fourth evaluation, Lou and Casey passed."
+  ],
+  "query": [
     "Query 1: Out of 100 random students, where do you think Barbara ranks in terms of intrinsic memorization ability? ",
     "Query 2: Out of 100 random students, where do you think Lou ranks in terms of intrinsic memorization ability?",
     "Query 3: Out of 100 random students, where do you think Casey ranks in terms of intrinsic memorization ability?",
@@ -24,8 +23,7 @@
     "Query 6: On a percentage scale from 0 to 100%, how well do you think Casey performed on the laboratory portion in the fourth evaluation?",
     "Query 7: In a new evaluation later this same day, who do you think would do better, Barbara and Lou (Pair 1) or Casey and Ajax (Pair 2), and by how much?"
   ],
-  "language_to_code": [
-    "// CONDITIONS",
+  "parsed_conditions": [
     "In the first evaluation, Barbara and Ajax passed.",
     "  condition(passed({pair: ['barbara', 'ajax'], evaluation: 1}))",
     "In the second evaluation, Barbara and Lou failed.",
@@ -33,9 +31,9 @@
     "In the third evaluation, Barbara and Casey passed.",
     "  condition(passed({pair: ['barbara', 'casey'], evaluation: 3}))",
     "In the fourth evaluation, Lou and Casey passed.",
-    " condition(passed({pair: ['lou', 'casey'], evaluation: 4}))",
-    "",
-    "// QUERIES",
+    " condition(passed({pair: ['lou', 'casey'], evaluation: 4}))"
+  ],
+  "parsed_queries": [
     "Query 1: Out of 100 random students, where do you think Barbara ranks in terms of intrinsic memorization ability? ",
     "  intrinsic_memorization_rank({student: 'barbara', out_of_n_students: 100})",
     "Query 2: Out of 100 random students, where do you think Lou ranks in terms of intrinsic memorization ability?",

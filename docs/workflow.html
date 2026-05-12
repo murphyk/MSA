@@ -22,42 +22,101 @@
 <body>
 
 <h1>MSA workflow</h1>
-<p>Pipeline for running probabilistic programs in WebPPL and comparing the resulting posterior samples across model variants.</p>
+<p>Pipeline for (a) auto-generating a WebPPL world-model from a natural-language
+scenario (the "MSA" method of <a href="https://arxiv.org/abs/2507.12547">Wong et al. 2025</a>),
+(b) running posterior inference on the resulting program, and (c) comparing
+its samples against a gold reference.</p>
 
 <h2>Directory layout</h2>
 <pre><code>MSA/
-├── models/
-│   └── gold/                 # WebPPL source for each "gold" model
-│       ├── biathlon.wppl
-│       ├── canoe.wppl
-│       ├── diving.wppl
-│       ├── exam.wppl
-│       └── tug.wppl
-├── get_samples.wppl          # WebPPL inference driver (concatenated with a model)
-├── get_samples.js            # Node wrapper: invokes webppl, writes JSON
-├── compare_samples.py        # Compare two sample files, render figures + HTML
-├── samples/
-│   └── {method}/             # One subdir per "method" label (gold, gold1,
-│       └── {model}.json      # msa_pro_e1, ...). Experiment labels are
-│                             # folded into the method name.
-├── comparisons/
-│   └── {method1}_vs_{method2}/
-│       └── {model}/
-│           ├── query{q}.png
-│           ├── jsd.png
-│           └── comparison.html
-└── docs/
-    ├── workflow.html         # this file
-    └── jsd.tex               # derivation of the JS-distance noise floor
+├── scenarios/                # Source scenarios + parsed JSON
+│   ├── tug.txt               # annotated with <START_…>/<END_…> markers
+│   └── tug.json              # produced by convert_scenarios.py
+├── prompts/                  # Prompt templates (paper Appendix)
+├── models/{method}/{model}.wppl
+├── samples/{method}/{model}.json
+├── comparisons/{m1}_vs_{m2}/{model}/   # figures, metrics.csv, comparison.html
+├── intermediates/{method}/{model}/     # per-LLM-call prompts + responses
+├── test/msa_smoke.py         # Fast end-to-end check (flash + k_graph=1)
+├── docs/
+│   ├── workflow.html         # this file
+│   └── jsd.tex               # noise floor of the JS-distance metric
+├── convert_scenarios.py      # scenarios/*.txt → scenarios/*.json
+├── formalize.py              # 3-step LLM pipeline
+├── msa.py                    # Top-level driver
+├── get_samples.wppl          # WebPPL inference driver
+├── get_samples.js            # Node wrapper around webppl
+├── compare_samples.py        # Per-query comparison + HTML report
+└── .env                      # OPENROUTER_API_KEY (gitignored)
 </code></pre>
 
-<h2>Stage 1: model definition</h2>
+<h2>Stage 1: scenarios</h2>
 
-<p>Each <code>.wppl</code> file under <code>models/{method}/</code> defines three top-level names:</p>
+<p>Each <code>scenarios/{name}.txt</code> is annotated with marker tags around
+five regions (scenario, language-to-code parse, scratchpad / concept trace,
+WebPPL model). <code>convert_scenarios.py</code> reads these and emits
+<code>scenarios/{name}.json</code> with eight fields stored as lists of lines:
+<code>background</code>, <code>conditions</code>, <code>query</code>,
+<code>parsed_conditions</code>, <code>parsed_queries</code>,
+<code>informal</code>, <code>graph</code>, <code>model</code>. These JSONs
+are the ground-truth examples that the formalize pipeline consults as
+in-context demos.</p>
+
+<h2>Stage 2: formalize (LLM &rarr; WebPPL)</h2>
+
+<p><code>formalize.py</code> implements the 3-step pipeline from the paper.
+For a target scenario, it uses the <em>other four</em> scenarios as shuffled
+in-context examples and calls an LLM through OpenRouter via
+<code>litellm</code>:</p>
+<ol>
+  <li><strong>Parse</strong> (<code>generate-parsing.txt</code>, T=0.2): translate
+      natural-language conditions and queries into WebPPL function calls
+      wrapped in <code>&lt;START_LANGUAGE_TO_WEBPPL_CODE&gt;</code> markers.</li>
+  <li><strong>Graph</strong> (<code>generate-graph.txt</code>, T=0.5): generate
+      <code>k_graph</code> candidate <code>&lt;START_SCRATCHPAD&gt;</code>
+      blocks (informal background + concept-dependency trace) in parallel
+      using a <code>ThreadPoolExecutor</code>. Each is scored 0&ndash;10 by an
+      LLM call to <code>score-graph.txt</code>; the best wins. With
+      <code>k_graph&gt;1</code> the K generate-and-score pairs all happen
+      concurrently, so wall-clock time is roughly one round-trip rather than
+      <code>2K</code>.</li>
+  <li><strong>Model</strong> (<code>generate-model.txt</code>, T=0.2): produce the
+      final <code>&lt;START_WEBPPL_MODEL&gt;</code> body, given the scenario,
+      parse, and best graph.</li>
+</ol>
+
+<p>LLM labels are short aliases &mdash; <code>pro</code> &rarr;
+<code>openrouter/google/gemini-3.1-pro-preview</code>, <code>flash</code> &rarr;
+<code>openrouter/google/gemini-3-flash-preview</code>, etc. Override via
+<code>MSA_LLM_PRO=...</code> env var, or pass the full model id directly
+(any litellm-supported provider).</p>
+
+<h2>Stage 3: top-level driver</h2>
+
+<p><code>msa.py --scenario {name} [--expt EXPT] [--llm pro] [--k-graph 8]</code>
+glues everything together:</p>
+<ol>
+  <li>Calls <code>formalize()</code> to produce the WebPPL source.</li>
+  <li>Prepends <code>var queryLabels = {...}</code> (built from the scenario's
+      <code>Query N:</code> lines) so the LLM-generated model &mdash; which doesn't
+      know about <code>queryLabels</code> &mdash; works with the inference wrapper.</li>
+  <li>Saves to <code>models/{method}/{scenario}.wppl</code> where
+      <code>method = msa_{llm}{suffix}</code>:
+      <code>_e{N}</code> for numeric expts (e.g. <code>--expt 1</code> &rarr;
+      <code>msa_pro_e1</code>) and <code>_{name}</code> for word expts
+      (<code>--expt smoke</code> &rarr; <code>msa_pro_smoke</code>).</li>
+  <li>Runs <code>get_samples.js</code> for inference, then
+      <code>compare_samples.py</code> against the <code>gold1</code> reference.</li>
+</ol>
+
+<h2>Stage 4: model contract</h2>
+
+<p>Each <code>.wppl</code> file under <code>models/{method}/</code> defines:</p>
 <ul>
-  <li><code>modelName</code> — short identifier (e.g. <code>'tug'</code>).</li>
-  <li><code>model</code> — a function with no arguments, returning a dict of query values. Internally it calls <code>condition(...)</code> to encode observed evidence.</li>
-  <li><code>queryLabels</code> — a dict mapping each query key (e.g. <code>query1</code>) to a human-readable description.</li>
+  <li><code>model</code> &mdash; a function with no arguments, returning a dict
+      of query values. Calls <code>condition(...)</code> for observed evidence.</li>
+  <li><code>queryLabels</code> &mdash; a dict mapping each query key to a
+      human-readable description.</li>
 </ul>
 <p>The model file does <em>not</em> run inference itself; that's the driver's job.</p>
 
@@ -117,6 +176,46 @@ not the webppl inference algorithm &mdash; that's <code>--algo</code>
   <li><code>parseInt</code> and <code>Number</code> silently abort the CPS-transformed program. Use <code>JSON.parse</code> or arithmetic coercion (e.g. <code>s * 1</code>) instead.</li>
   <li>Methods supported by <code>Infer</code>: <code>rejection</code> (exact, slow for tight conditions), <code>MCMC</code>, <code>SMC</code>, etc.</li>
 </ul>
+
+<h2>Intermediates &mdash; debugging the formalize pipeline</h2>
+
+<p>For each <code>formalize()</code> invocation, every LLM call is logged to
+<code>intermediates/{method}/{scenario}/</code>:</p>
+<table>
+<tr><th>File</th><th>Contents</th></tr>
+<tr><td><code>1_parse_prompt.txt</code></td>
+    <td>Full prompt sent for step 1 (template + in-context examples + target scenario).</td></tr>
+<tr><td><code>1_parse_response.txt</code></td>
+    <td>Raw LLM response.</td></tr>
+<tr><td><code>1_parse_block.txt</code></td>
+    <td>Extracted <code>&lt;START_LANGUAGE_TO_WEBPPL_CODE&gt;...&lt;END_…&gt;</code>
+        block, with markers, ready to feed into step 2.</td></tr>
+<tr><td><code>2_graph_{k}.txt</code></td>
+    <td>For each of <code>k_graph</code> candidates: extracted
+        <code>&lt;START_SCRATCHPAD&gt;...&lt;END_…&gt;</code> block plus the
+        raw scoring response. First line is <code># Score: &lt;0-10&gt;</code>.</td></tr>
+<tr><td><code>2_graph_{k}_response.txt</code></td>
+    <td>Only present if extraction failed; holds the raw response for that
+        sample so you can see why the markers were missing.</td></tr>
+<tr><td><code>2_graph_best.txt</code></td>
+    <td>The winning graph, with its index and score in a comment header.</td></tr>
+<tr><td><code>3_model_prompt.txt</code></td>
+    <td>Full prompt sent for step 3.</td></tr>
+<tr><td><code>3_model_response.txt</code></td>
+    <td>Raw LLM response.</td></tr>
+<tr><td><code>3_model.wppl</code></td>
+    <td>Extracted model body, markers stripped &mdash; what
+        <code>formalize()</code> returns.</td></tr>
+</table>
+
+<h2>Smoke test</h2>
+
+<p><code>test/msa_smoke.py</code> runs the full pipeline on tug with
+<code>--llm flash --k-graph 1 --expt smoke</code>, which is ~3 LLM calls total
+and finishes in seconds. Use it as a fast end-to-end check whenever you
+change the prompts, the wrapper logic, or the comparison code; outputs land
+at <code>models/msa_flash_smoke/</code>, <code>samples/msa_flash_smoke/</code>,
+and <code>comparisons/gold1_vs_msa_flash_smoke/tug/</code>.</p>
 
 <h2>Stage 3: comparison</h2>
 
