@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
-"""Compare posterior samples produced by two methods, for one model/experiment.
+"""Compare posterior samples produced by two methods, for one model.
 
 Reads:
-    samples/{method1}/{model}[_e{expt}].json
-    samples/{method2}/{model}[_e{expt}].json
+    samples/{method1}/{model}.json
+    samples/{method2}/{model}.json
 
 Writes (one PNG per query, one JSD summary, one HTML index):
-    comparisons/{method1}_vs_{method2}/{model}[_e{expt}]/query{q}.png
-    comparisons/{method1}_vs_{method2}/{model}[_e{expt}]/jsd.png
-    comparisons/{method1}_vs_{method2}/{model}[_e{expt}]/comparison.html
+    comparisons/{method1}_vs_{method2}/{model}/query{q}.png
+    comparisons/{method1}_vs_{method2}/{model}/jsd.png
+    comparisons/{method1}_vs_{method2}/{model}/comparison.html
+
+Experiment labels (if any) should be folded into the method name, e.g.
+`msa_pro_e1` rather than `msa_pro` + `--expt 1`.
 
 Usage:
     python compare_samples.py --model tug --method1 gold --method2 gold1
-    python compare_samples.py --model tug --method1 gold --method2 gold1 --expt 3
 """
 
 import argparse
@@ -49,19 +51,15 @@ def main():
     ap.add_argument('--model', required=True)
     ap.add_argument('--method1', required=True)
     ap.add_argument('--method2', required=True)
-    ap.add_argument('--expt', default='')
     ap.add_argument('--bins', type=int, default=30)
     ap.add_argument('--n-perm', type=int, default=1000,
                     help='permutation resamples for Wasserstein p-value')
     args = ap.parse_args()
 
-    expt_suffix = f"_e{args.expt}" if args.expt else ""
-    expt_str = args.expt if args.expt else '[]'
-
-    file1 = os.path.join('samples', args.method1, f"{args.model}{expt_suffix}.json")
-    file2 = os.path.join('samples', args.method2, f"{args.model}{expt_suffix}.json")
+    file1 = os.path.join('samples', args.method1, f"{args.model}.json")
+    file2 = os.path.join('samples', args.method2, f"{args.model}.json")
     outdir = os.path.join('comparisons', f"{args.method1}_vs_{args.method2}",
-                          f"{args.model}{expt_suffix}")
+                          args.model)
 
     with open(file1) as f:
         d1 = json.load(f)
@@ -77,7 +75,7 @@ def main():
 
     os.makedirs(outdir, exist_ok=True)
     header = (f"Model={args.model}, method1={args.method1}, "
-              f"method2={args.method2}, expt={expt_str}")
+              f"method2={args.method2}")
 
     png_names = []
     rows = []
@@ -191,7 +189,6 @@ def main():
                 "th{background:#f0f0f0}td:nth-child(2){text-align:left}</style>\n")
         f.write("</head><body>\n")
         f.write(f"<h1>{args.model} &mdash; {args.method1} vs {args.method2}</h1>\n")
-        f.write(f"<p class='sub'>expt = {expt_str}</p>\n")
         f.write(f"<img src='{os.path.basename(pval_path)}' alt='p-value distribution'>\n")
         f.write(f"<img src='{os.path.basename(jsd_path)}' alt='JS distance summary'>\n")
         f.write("<h2>Per-query metrics</h2>\n<table>\n")

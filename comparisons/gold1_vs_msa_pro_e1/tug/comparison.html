@@ -1,0 +1,25 @@
+<!doctype html>
+<html><head><meta charset='utf-8'>
+<title>Model=tug, method1=gold1, method2=msa_pro_e1</title>
+<style>body{font-family:sans-serif;max-width:900px;margin:2em auto;padding:0 1em}img{max-width:100%;display:block;margin:1em 0;border:1px solid #ddd}h1{margin-bottom:0}p.sub{color:#666;margin-top:0.2em}table{border-collapse:collapse;margin:1em 0;font-size:0.95em}th,td{border:1px solid #ccc;padding:0.3em 0.7em;text-align:right}th{background:#f0f0f0}td:nth-child(2){text-align:left}</style>
+</head><body>
+<h1>tug &mdash; gold1 vs msa_pro_e1</h1>
+<img src='pvalues.png' alt='p-value distribution'>
+<img src='jsd.png' alt='JS distance summary'>
+<h2>Per-query metrics</h2>
+<table>
+<tr><th>query</th><th>label</th><th>W</th><th>W/range</th><th>W/sd</th><th>JS</th><th>KS stat</th><th>KS p</th><th>perm p</th></tr>
+<tr><td>query1</td><td>Bob rank (out of 100)</td><td>0.766</td><td>0.008</td><td>0.028</td><td>0.113</td><td>0.032</td><td>0.685</td><td>0.878</td></tr>
+<tr><td>query2</td><td>Mary rank (out of 100)</td><td>0.731</td><td>0.007</td><td>0.026</td><td>0.104</td><td>0.023</td><td>0.954</td><td>0.929</td></tr>
+<tr><td>query3</td><td>Jim effort match 3 (%)</td><td>1.002</td><td>0.012</td><td>0.063</td><td>0.123</td><td>0.044</td><td>0.288</td><td>0.289</td></tr>
+<tr><td>query4</td><td>Bob effort match 1 (%)</td><td>0.625</td><td>0.008</td><td>0.036</td><td>0.100</td><td>0.028</td><td>0.828</td><td>0.790</td></tr>
+<tr><td>query5</td><td>P(team2 wins) Bob+Mary vs Jim+Sue</td><td>0.010</td><td>0.011</td><td>0.048</td><td>0.107</td><td>0.030</td><td>0.759</td><td>0.491</td></tr>
+<tr><td>query6</td><td>P(team2 wins) Sue+Paul vs Jim+Bob</td><td>0.007</td><td>0.007</td><td>0.028</td><td>0.110</td><td>0.019</td><td>0.994</td><td>0.894</td></tr>
+</table>
+<img src='query1.png' alt='query1.png'>
+<img src='query2.png' alt='query2.png'>
+<img src='query3.png' alt='query3.png'>
+<img src='query4.png' alt='query4.png'>
+<img src='query5.png' alt='query5.png'>
+<img src='query6.png' alt='query6.png'>
+</body></html>

@@ -37,11 +37,12 @@
 ├── get_samples.js            # Node wrapper: invokes webppl, writes JSON
 ├── compare_samples.py        # Compare two sample files, render figures + HTML
 ├── samples/
-│   └── {method}/             # One subdir per "method" label (gold, gold1, ...)
-│       └── {model}[_e{expt}].json
+│   └── {method}/             # One subdir per "method" label (gold, gold1,
+│       └── {model}.json      # msa_pro_e1, ...). Experiment labels are
+│                             # folded into the method name.
 ├── comparisons/
 │   └── {method1}_vs_{method2}/
-│       └── {model}[_e{expt}]/
+│       └── {model}/
 │           ├── query{q}.png
 │           ├── jsd.png
 │           └── comparison.html
@@ -78,22 +79,36 @@ __QUERIES_END__</code></pre>
   "samples": [{"query1": 62, "query2": 93, ...}, ...]
 }</code></pre>
 
-<p>Current invocation:</p>
+<p>Invocation:</p>
 <pre><code>node get_samples.js --model {biathlon|canoe|diving|exam|tug} \
-                    [--n N]       (default 1000)            \
-                    [--method M]  (default rejection)        \
-                    [--seed S]    (default 0)                \
-                    [--outdir D]  (default .)</code></pre>
+                    [--method LABEL]    (default: gold)              \
+                    [--n N]             (default: 1000)              \
+                    [--seed SEED]       (default: 0)                 \
+                    [--algo ALGO]       (default: rejection)         \
+                    [--model-dir DIR]   (default: models/{method})</code></pre>
 
-<div class="note">
-<strong>Note on path layout.</strong> The current <code>get_samples.js</code> still
-expects model files under <code>gold_models/</code> and writes filenames of the form
-<code>{model}_n{n}_seed{seed}.json</code>. After the recent restructure
-(models moved to <code>models/gold/</code>, sample files renamed to
-<code>{model}[_e{expt}].json</code>), the wrapper needs a small update before it can
-regenerate sample files in the locations <code>compare_samples.py</code> reads from.
-Existing <code>samples/{gold,gold1}/tug.json</code> still work fine as comparison inputs.
-</div>
+<p>The wrapper reads <code>{model-dir}/{model}.wppl</code> (default
+<code>models/{method}/{model}.wppl</code>), runs webppl with
+<code>--random-seed {seed}</code>, and writes
+<code>samples/{method}/{model}.json</code>. Experiment labels live in the
+method name (e.g. <code>msa_pro_e1</code>), not in the model file name.
+Examples:</p>
+<ul>
+  <li><code>--method gold --seed 0</code> &rarr; reads
+      <code>models/gold/tug.wppl</code>, writes
+      <code>samples/gold/tug.json</code> (reproduces the existing gold
+      reference byte-for-byte).</li>
+  <li><code>--method gold1 --seed 1 --model-dir models/gold</code>
+      &rarr; reuses the gold source with a different seed, writes
+      <code>samples/gold1/tug.json</code>.</li>
+  <li><code>--method msa_pro_e1</code> &rarr; reads
+      <code>models/msa_pro_e1/tug.wppl</code>, writes
+      <code>samples/msa_pro_e1/tug.json</code>.</li>
+</ul>
+<p>Note: <code>--method</code> here is a label for the <em>output</em>
+directory (e.g. <code>gold</code>, <code>gold1</code>, <code>learned</code>),
+not the webppl inference algorithm &mdash; that's <code>--algo</code>
+(<code>rejection</code> / <code>MCMC</code> / <code>SMC</code> / ...).</p>
 
 <h3>Webppl quirks worth knowing</h3>
 <ul>
@@ -109,18 +124,17 @@ Existing <code>samples/{gold,gold1}/tug.json</code> still work fine as compariso
 <pre><code>python compare_samples.py --model {model}      \
                           --method1 {m1}       \
                           --method2 {m2}       \
-                          [--expt {expt}]      \
                           [--bins 30]</code></pre>
 
-<p>Reads <code>samples/{m1}/{model}[_e{expt}].json</code> and
-<code>samples/{m2}/{model}[_e{expt}].json</code>, then for each query writes a
+<p>Reads <code>samples/{m1}/{model}.json</code> and
+<code>samples/{m2}/{model}.json</code>, then for each query writes a
 2&times;1 panel histogram and computes:</p>
 <ul>
   <li><strong>Jensen&ndash;Shannon distance</strong> &mdash; bin-based, in <code>[0,1]</code> bits. 0 = identical histograms; 1 = disjoint supports.</li>
   <li><strong>Wasserstein (Earth-Mover) distance</strong> &mdash; on raw samples, in the unit of the query.</li>
 </ul>
 
-<p>Outputs are written to <code>comparisons/{m1}_vs_{m2}/{model}[_e{expt}]/</code>:</p>
+<p>Outputs are written to <code>comparisons/{m1}_vs_{m2}/{model}/</code>:</p>
 <ul>
   <li><code>query{q}.png</code> &mdash; one per query, top panel = <code>m1</code>, bottom panel = <code>m2</code>, shared axes.</li>
   <li><code>jsd.png</code> &mdash; bar chart of JS distance per query.</li>
