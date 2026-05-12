@@ -206,6 +206,14 @@ def formalize(task, llm='pro', expt='1', *,
     target = all_scenarios[task]
     others = [s for n, s in all_scenarios.items() if n != task]
 
+    # Experiment 2: swap the target's background for the under-specified
+    # version (names latent variables in the queries, omits how they
+    # combine). The in-context examples keep their full backgrounds.
+    if str(expt) == '2' and target.get('background_e2'):
+        target = {**target, 'background': target['background_e2']}
+        if verbose:
+            print("Experiment 2: using under-specified background for target")
+
     system_prompt = (PROMPT_DIR / 'generate-system-prompt.txt').read_text()
 
     if not expt:
@@ -294,6 +302,24 @@ def formalize(task, llm='pro', expt='1', *,
     log(f"  -> chose graph {best_idx} (score={scores[best_idx]})")
     save('2_graph_best.txt',
          f'# Best graph #{best_idx} (score={scores[best_idx]})\n\n{best_graph}')
+
+    # Summary of all K scores in one file, with first concept-trace line of
+    # each candidate for quick visual sanity-checking.
+    summary_lines = [f"# {k_graph} graph candidates (best: #{best_idx})", "",
+                     f"{'k':>3}  {'score':>5}  {'chars':>7}  first concept-trace line"]
+    for k, (g, sc) in enumerate(zip(graphs, scores)):
+        marker = ' *' if k == best_idx else '  '
+        first_concept = ''
+        if g:
+            ct = g.split('<START_CONCEPT_TRACE>', 1)
+            if len(ct) == 2:
+                for line in ct[1].splitlines():
+                    if line.strip().startswith('-'):
+                        first_concept = line.strip()
+                        break
+        summary_lines.append(
+            f"{k:>3}  {sc:>5}  {len(g):>7}  {first_concept}{marker}")
+    save('2_graph_scores.txt', '\n'.join(summary_lines) + '\n')
 
     # ---------------- Step 3: full model -------------------------------- #
     log("[3/3] Generating full WebPPL model...")

@@ -186,5 +186,10 @@
     "    }",
     "",
     "}"
+  ],
+  "background_e2": [
+    "In this event, athletes are competing in a series of canoe races. Each athlete has an intrinsic strength, and puts in some level of effort to each race.",
+    "Athletes compete either individually or as a team.",
+    "All races take place on the same day."
   ]
 }

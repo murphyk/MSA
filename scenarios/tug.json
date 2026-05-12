@@ -206,5 +206,10 @@
     "    }",
     "",
     "}"
+  ],
+  "background_e2": [
+    "In this event, athletes are competing in matches of tug-of-war. Each athlete has an intrinsic strength, and puts in some level of effort to each match.",
+    "Athletes compete either individually or as a team.",
+    "All matches take place on the same day."
   ]
 }

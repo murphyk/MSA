@@ -73,8 +73,8 @@ def main():
                     help='scenario name (e.g. tug)')
     ap.add_argument('--expt', default='1',
                     help='experiment label (default: 1)')
-    ap.add_argument('--llm', default='pro',
-                    help='llm label, e.g. pro for Gemini 3.1 Pro (default: pro)')
+    ap.add_argument('--llm', default='flash',
+                    help='llm label (default: flash; use pro for Gemini 3.1 Pro)')
     ap.add_argument('--k-graph', type=int, default=8,
                     help='number of candidate dependency graphs to sample (default: 8)')
     args = ap.parse_args()

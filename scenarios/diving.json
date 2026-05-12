@@ -204,5 +204,10 @@
     "    query4: who_would_win_by_how_much({team1:['jamie', 'cameron'], team2:['avery', 'drew'], round: 7})",
     "  }",
     "}"
+  ],
+  "background_e2": [
+    "In this event, athletes are competing in a series of synchronized diving tournaments. Each athlete has an intrinsic skill, and there is some level of synchronization between teammates in each round.",
+    "Athletes compete as part of a team.",
+    "All matches take place on the same day."
   ]
 }

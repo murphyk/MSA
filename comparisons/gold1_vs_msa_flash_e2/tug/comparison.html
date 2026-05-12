@@ -1,0 +1,25 @@
+<!doctype html>
+<html><head><meta charset='utf-8'>
+<title>Model=tug, method1=gold1, method2=msa_flash_e2</title>
+<style>body{font-family:sans-serif;max-width:900px;margin:2em auto;padding:0 1em}img{max-width:100%;display:block;margin:1em 0;border:1px solid #ddd}h1{margin-bottom:0}p.sub{color:#666;margin-top:0.2em}table{border-collapse:collapse;margin:1em 0;font-size:0.95em}th,td{border:1px solid #ccc;padding:0.3em 0.7em;text-align:right}th{background:#f0f0f0}td:nth-child(2){text-align:left}</style>
+</head><body>
+<h1>tug &mdash; gold1 vs msa_flash_e2</h1>
+<h2>Per-query metrics</h2>
+<table>
+<tr><th>query</th><th>label</th><th>W</th><th>W/range</th><th>W/sd</th><th>JS</th><th>KS stat</th><th>KS p</th><th>perm p</th></tr>
+<tr><td>query1</td><td>Out of 100 random athletes, where do you think Bob ranks in terms of intrinsic strength?</td><td>2.460</td><td>0.025</td><td>0.091</td><td>0.134</td><td>0.045</td><td>0.263</td><td>0.047</td></tr>
+<tr><td>query2</td><td>Out of 100 random athletes, where do you think Mary ranks in terms of intrinsic strength?</td><td>4.804</td><td>0.049</td><td>0.173</td><td>0.133</td><td>0.075</td><td>0.007</td><td>0.001</td></tr>
+<tr><td>query3</td><td>On a percentage scale from 0 to 100%, how much effort do you think Jim put into the third match?</td><td>15.021</td><td>0.183</td><td>0.863</td><td>0.413</td><td>0.405</td><td>0.000</td><td>0.001</td></tr>
+<tr><td>query4</td><td>On a percentage scale from 0 to 100%, how much effort do you think Bob put into the first match?</td><td>14.204</td><td>0.171</td><td>0.771</td><td>0.361</td><td>0.362</td><td>0.000</td><td>0.001</td></tr>
+<tr><td>query5</td><td>In a new match later this same day between Bob and Mary (Team 1) and Jim and Sue (Team 2), who would win and by how much?</td><td>0.043</td><td>0.043</td><td>0.186</td><td>0.169</td><td>0.128</td><td>0.000</td><td>0.001</td></tr>
+<tr><td>query6</td><td>In a new match later this same day between Sue and Paul (Team 1) and Jim and Bob (Team 2), who would win and by how much?</td><td>0.059</td><td>0.059</td><td>0.224</td><td>0.194</td><td>0.131</td><td>0.000</td><td>0.001</td></tr>
+</table>
+<img src='pvalues.png' alt='p-value distribution'>
+<img src='jsd.png' alt='JS distance summary'>
+<img src='query1.png' alt='query1.png'>
+<img src='query2.png' alt='query2.png'>
+<img src='query3.png' alt='query3.png'>
+<img src='query4.png' alt='query4.png'>
+<img src='query5.png' alt='query5.png'>
+<img src='query6.png' alt='query6.png'>
+</body></html>

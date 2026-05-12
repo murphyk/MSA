@@ -27,6 +27,51 @@ from pathlib import Path
 SCENARIO_DIR = Path('scenarios')
 
 
+# Hand-crafted under-specified backgrounds for Experiment 2 (Wong et al. 2025).
+# Each names only the latent variables that appear in the queries/conditions
+# (e.g. intrinsic strength, effort), and drops the description of how those
+# variables combine to produce observed outcomes. The official e2 vignettes
+# were not published in the data repo; these are an approximation. The author
+# was emailed for the official text.
+BACKGROUND_E2 = {
+    'tug': [
+        "In this event, athletes are competing in matches of tug-of-war. "
+        "Each athlete has an intrinsic strength, and puts in some level of "
+        "effort to each match.",
+        "Athletes compete either individually or as a team.",
+        "All matches take place on the same day.",
+    ],
+    'biathlon': [
+        "In this event, teams of players are competing in rounds of a "
+        "biathalon, a winter sport that combines cross-country skiing and "
+        "rifle shooting. Each athlete has an intrinsic strength, and has "
+        "some shooting accuracy in each round.",
+        "Athletes compete either individually or as a team.",
+        "All matches take place on the same day.",
+    ],
+    'canoe': [
+        "In this event, athletes are competing in a series of canoe races. "
+        "Each athlete has an intrinsic strength, and puts in some level of "
+        "effort to each race.",
+        "Athletes compete either individually or as a team.",
+        "All races take place on the same day.",
+    ],
+    'diving': [
+        "In this event, athletes are competing in a series of synchronized "
+        "diving tournaments. Each athlete has an intrinsic skill, and there "
+        "is some level of synchronization between teammates in each round.",
+        "Athletes compete as part of a team.",
+        "All matches take place on the same day.",
+    ],
+    'exam': [
+        "In this model, students are being evaluated for their science class, "
+        "which has a two-part exam. Exams are completed in pairs.",
+        "Each student has an intrinsic memorization ability, and has some "
+        "level of laboratory performance on each evaluation.",
+    ],
+}
+
+
 def extract(text, start, end):
     s = text.find(start)
     if s < 0:
@@ -112,6 +157,9 @@ def main():
         raise SystemExit(f"No .txt files found in {SCENARIO_DIR}/")
     for txt_path in txt_files:
         parsed = parse(txt_path.read_text())
+        name = txt_path.stem
+        if name in BACKGROUND_E2:
+            parsed['background_e2'] = BACKGROUND_E2[name]
         json_path = txt_path.with_suffix('.json')
         json_path.write_text(json.dumps(parsed, indent=2) + '\n')
         sizes = ', '.join(f"{k}={len(v)}" for k, v in parsed.items())

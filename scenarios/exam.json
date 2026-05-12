@@ -203,5 +203,9 @@
     "    }",
     "",
     "}"
+  ],
+  "background_e2": [
+    "In this model, students are being evaluated for their science class, which has a two-part exam. Exams are completed in pairs.",
+    "Each student has an intrinsic memorization ability, and has some level of laboratory performance on each evaluation."
   ]
 }
