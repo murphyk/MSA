@@ -24,7 +24,7 @@ Output fields (each stored as a list of lines so the JSON renders readably):
 import json
 from pathlib import Path
 
-SCENARIO_DIR = Path('scenarios')
+SCENARIO_DIR = Path('data/train-scenarios')
 
 
 # Hand-crafted under-specified backgrounds for Experiment 2 (Wong et al. 2025).
@@ -34,14 +34,14 @@ SCENARIO_DIR = Path('scenarios')
 # were not published in the data repo; these are an approximation. The author
 # was emailed for the official text.
 BACKGROUND_E2 = {
-    'tug': [
+    'tug-of-war': [
         "In this event, athletes are competing in matches of tug-of-war. "
         "Each athlete has an intrinsic strength, and puts in some level of "
         "effort to each match.",
         "Athletes compete either individually or as a team.",
         "All matches take place on the same day.",
     ],
-    'biathlon': [
+    'biathalon': [
         "In this event, teams of players are competing in rounds of a "
         "biathalon, a winter sport that combines cross-country skiing and "
         "rifle shooting. Each athlete has an intrinsic strength, and has "
@@ -49,7 +49,7 @@ BACKGROUND_E2 = {
         "Athletes compete either individually or as a team.",
         "All matches take place on the same day.",
     ],
-    'canoe': [
+    'canoe-race': [
         "In this event, athletes are competing in a series of canoe races. "
         "Each athlete has an intrinsic strength, and puts in some level of "
         "effort to each race.",

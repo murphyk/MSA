@@ -1,0 +1,118 @@
+var queryLabels = {
+  query1: "Out of 100 random athletes, where do you think Blake ranks in terms of intrinsic strength?",
+  query2: "Out of 100 random athletes, where do you think Peyton ranks in terms of intrinsic strength?",
+  query3: "Out of 100 random athletes, where do you think Robin ranks in terms of intrinsic strength?",
+  query4: "On a percentage scale from 0 to 100%, how much effort do you think Blake put into the third match?",
+  query5: "On a percentage scale from 0 to 100%, how much effort do you think Peyton put into the third match?",
+  query6: "On a percentage scale from 0 to 100%, how much effort do you think Robin put into the third match?",
+  query7: "In a new match later this same day between Blake and Peyton (Team 1) and Ness and Max (Team 2), who would win and by how much?",
+  query8: "In a new match later this same day between Blake and Ness (Team 1) and Peyton and Taylor (Team 2), who would win and by how much?"
+};
+
+var model = function() {
+    // BACKGROUND KNOWLEDGE
+    
+    // Intrinsic strength is an underlying attribute of a given athlete that remains constant.
+    var intrinsic_strength = mem(function ({athlete}) {
+        // We assume strength is normally distributed around a mean of 100.
+        var parameter_intrinsic_strength_average = 100;
+        var parameter_intrinsic_strength_variance = 20;
+        return Math.max(gaussian(parameter_intrinsic_strength_average, parameter_intrinsic_strength_variance), 1);
+    });
+
+    // An athlete's intrinsic strength ranking out of n other athletes.
+    var intrinsic_strength_rank = function({athlete, out_of_n_athletes}) {
+        var random_athlete_ids = mapN(function(x) {return uniform(0, 1000)}, out_of_n_athletes - 1);
+        return sum(map(
+            function(random_athlete_id) {
+                return intrinsic_strength({athlete: athlete}) > intrinsic_strength({athlete: random_athlete_id})
+            }, random_athlete_ids));
+    };
+
+    // Athletes vary in the effort they put into any given match. 
+    // Most of the time, people pull with a moderately high amount of effort. 
+    // Sometimes, they pull with a fraction, or extra hard.
+    var effort_level_in_match = mem(function({athlete, match}) {
+        // We'll represent effort as a percentage scale (0-100) where 60 is moderate, 
+        // 30 is low, and 90 is extra high.
+        var parameter_low_effort_prior = 0.15;
+        var parameter_moderate_effort_prior = 0.70;
+        var parameter_high_effort_prior = 0.15;
+
+        var low_effort_val = 30;
+        var moderate_effort_val = 65;
+        var high_effort_val = 95;
+        var effort_variance = 10;
+
+        var effort_average = categorical({
+            ps: [parameter_low_effort_prior, parameter_moderate_effort_prior, parameter_high_effort_prior], 
+            vs: [low_effort_val, moderate_effort_val, high_effort_val]
+        });
+
+        return Math.min(Math.max(gaussian(effort_average, effort_variance), 0), 100);
+    });
+
+    // How hard each athlete pulls is determined by their intrinsic strength modified by effort.
+    var individual_pull_in_match = function({athlete, match}) {
+        var strength = intrinsic_strength({athlete: athlete});
+        var effort = effort_level_in_match({athlete: athlete, match: match});
+        // We normalize effort so that 65% effort corresponds to 1.0x strength.
+        var effort_multiplier = effort / 65;
+        return strength * effort_multiplier;
+    };
+
+    // How hard a team pulls overall is the total amount all athletes on the team pull.
+    var team_total_pull_in_match = function({team, match}) {
+        return sum(map(function(athlete) { 
+            return individual_pull_in_match({athlete: athlete, match: match}) 
+        }, team));
+    };
+
+    // The team that pulls the hardest in a given match wins.
+    var beat = function({team1, team2, match}) {
+        return team_total_pull_in_match({team: team1, match: match}) > team_total_pull_in_match({team: team2, match: match});
+    };
+
+    // A team loses if they did not beat the other team.
+    var lost = function({team1, team2, match}) {
+        return !beat({team1: team1, team2: team2, match: match});
+    };
+
+    // Calculate win probability for team 2 as a proxy for "who would win and by how much".
+    var who_would_win_by_how_much = function({team1, team2, match}) {
+        var num_simulations = 100;
+        var random_match_ids = mapN(function(x) {return uniform(match + 1, 2000)}, num_simulations);
+        var team2_wins = sum(map(function(m_id) {
+            return beat({team1: team2, team2: team1, match: m_id})
+        }, random_match_ids));
+        return team2_wins / num_simulations;
+    };
+
+    // CONDITIONS
+    // In the first match, Blake and Peyton lost to Ness and Taylor.
+    condition(lost({team1: ['blake', 'peyton'], team2: ['ness', 'taylor'], match: 1}))
+    // In the second match, Blake and Peyton lost to Quinn and Harper.
+    condition(lost({team1: ['blake', 'peyton'], team2: ['quinn', 'harper'], match: 2}))
+    // In the third match, Blake and Peyton lost to Robin and Max.
+    condition(lost({team1: ['blake', 'peyton'], team2: ['robin', 'max'], match: 3}))
+
+    // QUERIES
+    return {
+        // Query 1: Out of 100 random athletes, where do you think Blake ranks in terms of intrinsic strength?
+        query1: intrinsic_strength_rank({athlete: 'blake', out_of_n_athletes: 100}),
+        // Query 2: Out of 100 random athletes, where do you think Peyton ranks in terms of intrinsic strength?
+        query2: intrinsic_strength_rank({athlete: 'peyton', out_of_n_athletes: 100}),
+        // Query 3: Out of 100 random athletes, where do you think Robin ranks in terms of intrinsic strength?
+        query3: intrinsic_strength_rank({athlete: 'robin', out_of_n_athletes: 100}),
+        // Query 4: On a percentage scale from 0 to 100%, how much effort do you think Blake put into the third match?
+        query4: effort_level_in_match({athlete: 'blake', match: 3}),
+        // Query 5: On a percentage scale from 0 to 100%, how much effort do you think Peyton put into the third match?
+        query5: effort_level_in_match({athlete: 'peyton', match: 3}),
+        // Query 6: On a percentage scale from 0 to 100%, how much effort do you think Robin put into the third match?
+        query6: effort_level_in_match({athlete: 'robin', match: 3}),
+        // Query 7: In a new match later this same day between Blake and Peyton (Team 1) and Ness and Max (Team 2), who would win and by how much?
+        query7: who_would_win_by_how_much({team1: ['blake', 'peyton'], team2: ['ness', 'max'], match: 4}),
+        // Query 8: In a new match later this same day between Blake and Ness (Team 1) and Peyton and Taylor (Team 2), who would win and by how much?
+        query8: who_would_win_by_how_much({team1: ['blake', 'ness'], team2: ['peyton', 'taylor'], match: 5})
+    };
+};

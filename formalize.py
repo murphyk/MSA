@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
-"""MSA formalize() pipeline.
+"""MSA formalize() pipeline (Wong et al. 2025, arXiv:2507.12547).
 
-Three-step procedure adapted from Wong et al. 2025 (arXiv:2507.12547):
+Three steps run for a single target test scenario:
 
   1. Parse the natural-language conditions and queries into WebPPL stubs.
-  2. Generate K candidate informal-knowledge + dependency-graph descriptions,
-     LLM-score each, keep the best.
+  2. Generate K candidate informal-knowledge + dependency-graph descriptions
+     in parallel, LLM-score each, keep the best.
   3. Generate the full WebPPL model from scenario + parse + best graph.
 
-Each step is in-context prompted with the other 4 scenarios as examples.
+In-context demos are the four train scenarios that don't match the test
+sport (e.g. testing a biathalon vignette uses canoe-race + tug-of-war +
+diving + exam as examples).
 
-The LLM SDK (google-genai / anthropic / openai) is imported lazily inside
-`generate()` so that other tooling in the repo doesn't require it.
+Public API:
+  load_train_scenarios()          -> {name: {field: str}}
+  load_test_scenario(scn, expt)   -> {background, conditions, query}
+  formalize(target, exclude_sport, llm, ...) -> (model_src, parse_block)
+
+The LLM call goes through litellm with OpenRouter; .env supplies the key.
 """
 
 from __future__ import annotations
@@ -27,15 +33,13 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 REPO = Path(__file__).resolve().parent
-SCENARIO_DIR = REPO / 'scenarios'
+TRAIN_DIR = REPO / 'data' / 'train-scenarios'
+TEST_DIR = REPO / 'data' / 'test-scenarios'
 PROMPT_DIR = REPO / 'prompts'
 
-# Load OPENROUTER_API_KEY etc. from .env
 load_dotenv(REPO / '.env')
 
 # Short label -> OpenRouter model id. Override via env var MSA_LLM_PRO etc.
-# Pass any unrecognised label through verbatim as the model id, so callers
-# can spell out e.g. --llm openrouter/x-ai/grok-4 directly.
 LLM_MAP = {
     'pro':    os.environ.get('MSA_LLM_PRO',
                              'openrouter/google/gemini-3.1-pro-preview'),
@@ -45,11 +49,8 @@ LLM_MAP = {
                              'openrouter/anthropic/claude-opus-4-6'),
     'sonnet': os.environ.get('MSA_LLM_SONNET',
                              'openrouter/anthropic/claude-sonnet-4-6'),
-    'gpt':    os.environ.get('MSA_LLM_GPT',
-                             'openrouter/openai/gpt-5'),
+    'gpt':    os.environ.get('MSA_LLM_GPT', 'openrouter/openai/gpt-5'),
 }
-
-DEFAULT_K_GRAPH = 8
 
 
 # --------------------------------------------------------------------------- #
@@ -60,41 +61,77 @@ def _join(field):
     return '\n'.join(field) if isinstance(field, list) else field
 
 
-def load_all_scenarios():
-    """Return {scenario_name: {field: str}} with line-list fields joined."""
+def load_train_scenarios():
+    """Return {name: {field: str}} for every train scenario."""
     out = {}
-    for jp in sorted(SCENARIO_DIR.glob('*.json')):
+    for jp in sorted(TRAIN_DIR.glob('*.json')):
         data = json.loads(jp.read_text())
         out[jp.stem] = {k: _join(v) for k, v in data.items()}
     return out
 
 
+def _split_test_text(text):
+    """Split a plain-text test scenario into background/conditions/query."""
+    lines = text.splitlines()
+    heads = ['BACKGROUND', 'CONDITIONS', 'QUERIES']
+    out_keys = ['background', 'conditions', 'query']
+    idxs = []
+    for h in heads:
+        for i, ln in enumerate(lines):
+            if ln.strip() == h:
+                idxs.append(i)
+                break
+        else:
+            raise ValueError(f"Missing heading {h!r} in test scenario")
+    idxs.append(len(lines))
+    out = {}
+    for key, s, e in zip(out_keys, idxs, idxs[1:]):
+        section = lines[s + 1:e]
+        while section and not section[0].strip():
+            section.pop(0)
+        while section and not section[-1].strip():
+            section.pop()
+        out[key] = '\n'.join(section)
+    return out
+
+
+def load_test_scenario(scenario_id, expt):
+    path = TEST_DIR / f'e{expt}' / 'scenarios' / f'{scenario_id}.txt'
+    if not path.exists():
+        raise SystemExit(f"Test scenario not found: {path}")
+    return _split_test_text(path.read_text())
+
+
+def extract_sport(scenario_id):
+    """Pull the sport prefix off a test scenario id."""
+    for sport in ('biathalon', 'canoe-race', 'tug-of-war'):
+        if scenario_id.startswith(sport + '_'):
+            return sport
+    raise ValueError(f"Cannot extract sport from: {scenario_id}")
+
+
+# Block formatters --------------------------------------------------------- #
+
 def _scenario_block(s):
-    return (
-        '<START_SCENARIO>\n'
-        f'BACKGROUND\n{s["background"]}\n\n'
-        f'CONDITIONS\n{s["conditions"]}\n\n'
-        f'QUERIES\n{s["query"]}\n'
-        '<END_SCENARIO>'
-    )
+    return ('<START_SCENARIO>\n'
+            f'BACKGROUND\n{s["background"]}\n\n'
+            f'CONDITIONS\n{s["conditions"]}\n\n'
+            f'QUERIES\n{s["query"]}\n'
+            '<END_SCENARIO>')
 
 
 def _parse_block(s):
-    return (
-        '<START_LANGUAGE_TO_WEBPPL_CODE>\n'
-        f'// CONDITIONS\n{s["parsed_conditions"]}\n\n'
-        f'// QUERIES\n{s["parsed_queries"]}\n'
-        '<END_LANGUAGE_TO_WEBPPL_CODE>'
-    )
+    return ('<START_LANGUAGE_TO_WEBPPL_CODE>\n'
+            f'// CONDITIONS\n{s["parsed_conditions"]}\n\n'
+            f'// QUERIES\n{s["parsed_queries"]}\n'
+            '<END_LANGUAGE_TO_WEBPPL_CODE>')
 
 
 def _scratchpad_block(s):
-    return (
-        '<START_SCRATCHPAD>\n'
-        f'{s["informal"]}\n\n'
-        f'<START_CONCEPT_TRACE>\n{s["graph"]}\n<END_CONCEPT_TRACE>\n'
-        '<END_SCRATCHPAD>'
-    )
+    return ('<START_SCRATCHPAD>\n'
+            f'{s["informal"]}\n\n'
+            f'<START_CONCEPT_TRACE>\n{s["graph"]}\n<END_CONCEPT_TRACE>\n'
+            '<END_SCRATCHPAD>')
 
 
 def _model_block(s):
@@ -141,39 +178,28 @@ def _extract_between(text, start_marker, end_marker, *, inclusive=True):
 
 
 def _extract_score(text):
-    """Pull the first 0..10 integer from a scoring response. Default 0."""
     m = re.search(r'\b(10|[0-9])\b', text)
     return int(m.group(1)) if m else 0
 
 
 # --------------------------------------------------------------------------- #
-# LLM call (lazy import; provider chosen by model-id prefix)
+# LLM call (litellm via OpenRouter)
 # --------------------------------------------------------------------------- #
 
 def generate(prompt, llm, *, temperature=0.2, system=None, max_tokens=16384):
-    """Provider-agnostic completion via litellm.
-
-    The model id is taken from LLM_MAP[llm] if `llm` is a short label,
-    otherwise `llm` is passed through directly. Any provider that litellm
-    supports works (see https://docs.litellm.ai/docs/providers).
-    """
     import litellm
     litellm.suppress_debug_info = True
     warnings.filterwarnings("ignore", message="Pydantic serializer warnings")
 
     model_id = LLM_MAP.get(llm, llm)
-
     messages = []
     if system:
         messages.append({'role': 'system', 'content': system})
     messages.append({'role': 'user', 'content': prompt})
 
     resp = litellm.completion(
-        model=model_id,
-        messages=messages,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        num_retries=3,
+        model=model_id, messages=messages,
+        temperature=temperature, max_tokens=max_tokens, num_retries=3,
     )
     return resp.choices[0].message.content or ''
 
@@ -188,44 +214,36 @@ def _shuffled(items, rng):
     return out
 
 
-def formalize(task, llm='pro', expt='1', *,
-              k_graph=DEFAULT_K_GRAPH,
-              save_intermediates=True,
-              intermediates_dir=None,
-              rng=None,
-              verbose=True):
-    """Run the 3-step pipeline. Returns the final WebPPL model source string."""
+def formalize(target, exclude_sport, llm='flash', *,
+              k_graph=4, save_intermediates=True,
+              intermediates_dir=None, rng=None, verbose=False):
+    """Run the 3-step pipeline.
+
+    target: dict with 'background', 'conditions', 'query' (the test scenario).
+    exclude_sport: train-scenario name to omit from in-context demos
+                   (must match a key in data/train-scenarios/).
+
+    Returns (model_src, parse_block) — the final WebPPL model body (markers
+    stripped) and the step-1 <START_LANGUAGE_TO_WEBPPL_CODE>...<END_…>
+    block (markers kept). The parse block is returned separately so callers
+    can re-use the parsed conditions/queries to build a gold model.
+    """
     if rng is None:
-        seed = int(expt) if (expt and str(expt).isdigit()) else 0
-        rng = random.Random(seed)
+        rng = random.Random(0)
 
-    all_scenarios = load_all_scenarios()
-    if task not in all_scenarios:
-        raise SystemExit(f"Scenario not found: {task}. "
-                         f"Available: {sorted(all_scenarios)}")
-    target = all_scenarios[task]
-    others = [s for n, s in all_scenarios.items() if n != task]
-
-    # Experiment 2: swap the target's background for the under-specified
-    # version (names latent variables in the queries, omits how they
-    # combine). The in-context examples keep their full backgrounds.
-    if str(expt) == '2' and target.get('background_e2'):
-        target = {**target, 'background': target['background_e2']}
-        if verbose:
-            print("Experiment 2: using under-specified background for target")
+    train = load_train_scenarios()
+    if exclude_sport not in train:
+        raise SystemExit(
+            f"Unknown exclude_sport: {exclude_sport!r}. "
+            f"Train scenarios: {sorted(train)}")
+    others = [s for n, s in train.items() if n != exclude_sport]
 
     system_prompt = (PROMPT_DIR / 'generate-system-prompt.txt').read_text()
 
-    if not expt:
-        suffix = ''
-    elif str(expt).isdigit():
-        suffix = f'_e{expt}'
-    else:
-        suffix = f'_{expt}'
-    method = f'msa_{llm}{suffix}'
-    if save_intermediates and intermediates_dir is None:
-        intermediates_dir = REPO / 'intermediates' / method / task
     if save_intermediates:
+        if intermediates_dir is None:
+            raise ValueError(
+                "save_intermediates=True requires intermediates_dir")
         intermediates_dir.mkdir(parents=True, exist_ok=True)
 
     def log(msg):
@@ -237,7 +255,7 @@ def formalize(task, llm='pro', expt='1', *,
             (intermediates_dir / name).write_text(content)
 
     # ---------------- Step 1: parse ------------------------------------- #
-    log("[1/3] Parsing observations and queries...")
+    log("[1/3] parse")
     examples = '\n\n'.join(_example_for_parse(s) for s in _shuffled(others, rng))
     prompt = _fill('generate-parsing.txt', {
         '<SHUFFLED EXAMPLES OF SCENARIOS AND START_LANGUAGE_TO_WEBPPL_CODE DELIMITED BLOCK INJECTED HERE>':
@@ -251,13 +269,11 @@ def formalize(task, llm='pro', expt='1', *,
         resp, '<START_LANGUAGE_TO_WEBPPL_CODE>', '<END_LANGUAGE_TO_WEBPPL_CODE>')
     save('1_parse_block.txt', parse_block)
 
-    # ---------------- Step 2: causal graph (K samples + scoring) -------- #
-    log(f"[2/3] Generating {k_graph} candidate dependency graphs in parallel...")
+    # ---------------- Step 2: graph (K parallel) ------------------------ #
+    log(f"[2/3] {k_graph} graphs")
     score_template = (PROMPT_DIR / 'score-graph.txt').read_text()
     target_after_parse = _scenario_block(target) + '\n\n' + parse_block
 
-    # Pre-shuffle example orderings on the main thread so the RNG stays
-    # deterministic regardless of worker completion order.
     example_blocks = [
         '\n\n'.join(_example_for_graph(s) for s in _shuffled(others, rng))
         for _ in range(k_graph)
@@ -289,40 +305,28 @@ def formalize(task, llm='pro', expt='1', *,
             if gblock:
                 save(f'2_graph_{k}.txt',
                      f'# Score: {score}\n\n{gblock}\n\n# Score response:\n{sresp}')
-                log(f"  [graph {k+1}/{k_graph}] score={score}")
             else:
                 save(f'2_graph_{k}_response.txt', gresp)
-                log(f"  [graph {k+1}/{k_graph}] skipped (no markers)")
+            log(f"  graph {k+1}/{k_graph}: score={score}")
 
     if not any(g for g in graphs):
-        raise SystemExit("All graph generations failed (no <START_SCRATCHPAD>)")
+        raise SystemExit("All graph generations failed")
 
     best_idx = max(range(len(graphs)), key=lambda i: scores[i])
     best_graph = graphs[best_idx]
-    log(f"  -> chose graph {best_idx} (score={scores[best_idx]})")
     save('2_graph_best.txt',
          f'# Best graph #{best_idx} (score={scores[best_idx]})\n\n{best_graph}')
 
-    # Summary of all K scores in one file, with first concept-trace line of
-    # each candidate for quick visual sanity-checking.
-    summary_lines = [f"# {k_graph} graph candidates (best: #{best_idx})", "",
-                     f"{'k':>3}  {'score':>5}  {'chars':>7}  first concept-trace line"]
+    # Score summary table
+    summary = [f"# {k_graph} graph candidates (best: #{best_idx})", "",
+               f"{'k':>3}  {'score':>5}  {'chars':>7}"]
     for k, (g, sc) in enumerate(zip(graphs, scores)):
-        marker = ' *' if k == best_idx else '  '
-        first_concept = ''
-        if g:
-            ct = g.split('<START_CONCEPT_TRACE>', 1)
-            if len(ct) == 2:
-                for line in ct[1].splitlines():
-                    if line.strip().startswith('-'):
-                        first_concept = line.strip()
-                        break
-        summary_lines.append(
-            f"{k:>3}  {sc:>5}  {len(g):>7}  {first_concept}{marker}")
-    save('2_graph_scores.txt', '\n'.join(summary_lines) + '\n')
+        mk = ' *' if k == best_idx else '  '
+        summary.append(f"{k:>3}  {sc:>5}  {len(g):>7}{mk}")
+    save('2_graph_scores.txt', '\n'.join(summary) + '\n')
 
-    # ---------------- Step 3: full model -------------------------------- #
-    log("[3/3] Generating full WebPPL model...")
+    # ---------------- Step 3: model ------------------------------------- #
+    log("[3/3] model")
     examples = '\n\n'.join(_example_for_model(s) for s in _shuffled(others, rng))
     target_full = target_after_parse + '\n\n' + best_graph
     prompt = _fill('generate-model.txt', {
@@ -339,5 +343,4 @@ def formalize(task, llm='pro', expt='1', *,
     model_src = model_block.strip()
     save('3_model.wppl', model_src)
 
-    log(f"Done. Intermediates in {intermediates_dir.relative_to(REPO)}")
-    return model_src
+    return model_src, parse_block

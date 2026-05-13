@@ -1,0 +1,102 @@
+var queryLabels = {
+  query1: "Out of 100 random athletes, where do you think Indiana ranks in terms of intrinsic strength?",
+  query2: "Out of 100 random athletes, where do you think Lane ranks in terms of intrinsic strength?",
+  query3: "Out of 100 random athletes, where do you think Taylor ranks in terms of intrinsic strength?",
+  query4: "On a percentage scale from 0 to 100%, how much effort do you think Indiana put into the second match?",
+  query5: "On a percentage scale from 0 to 100%, how much effort do you think Lane put into the first match?",
+  query6: "On a percentage scale from 0 to 100%, how much effort do you think Taylor put into the second match?",
+  query7: "In a new match later this same day between Indiana and Lane (Team 1) and Casey and Fey (Team 2), who would win and by how much?",
+  query8: "In a new match later this same day between Indiana and Taylor (Team 1) and Lane and Ness (Team 2), who would win and by how much?"
+};
+
+// from https://github.com/lio-wong/msa-cogsci-2025-data/blob/main/example-scenarios/e1-e2/tug-of-war.txt
+var modelName = 'tug';
+
+var model = function() {
+    // BACKGROUND KNOWLEDGE
+    var intrinsic_strength = mem(function ({athlete}) {
+      var parameter_intrinsic_strength_average = 100;
+      var parameter_intrinsic_strength_variance = 20;
+      return Math.max(gaussian(parameter_intrinsic_strength_average, parameter_intrinsic_strength_variance), 0)
+    })
+
+    var intrinsic_strength_rank = function({athlete, out_of_n_athletes}) {
+        var random_athlete_ids = mapN(function(x) {return uniform(0, 1000)}, out_of_n_athletes - 1)
+        return sum(map(
+            function(random_athlete_id) {
+              return intrinsic_strength({athlete: athlete}) > intrinsic_strength({athlete: random_athlete_id})}, random_athlete_ids))
+    }
+
+    var effort_level_in_match = mem(function({athlete, match}) {
+      var strong_threshold = 140;
+      var weak_threshold = 90;
+
+      var parameter_low_effort_prior =
+          intrinsic_strength(athlete) > strong_threshold ? 0.05 :
+               intrinsic_strength(athlete) < weak_threshold ?  0.8 :
+                                                     0.2;
+      var parameter_moderate_effort_prior = intrinsic_strength(athlete) > strong_threshold ? 0.15 :
+               intrinsic_strength(athlete) < weak_threshold ?  0.15 :
+                                                        0.6;
+      var parameter_extra_high_effort_prior = intrinsic_strength(athlete) > strong_threshold ? 0.8 :
+               intrinsic_strength(athlete) < weak_threshold ?  0.05 :
+                                                        0.2;
+
+      var low_effort_average = 40;
+      var moderate_effort_average = 60;
+      var extra_high_effort_average = 80;
+      var effort_variance = 10;
+
+      var effort_average = categorical({ps: [parameter_low_effort_prior, parameter_moderate_effort_prior, parameter_extra_high_effort_prior],
+      vs: [low_effort_average, moderate_effort_average, extra_high_effort_average]});
+
+      return Math.min(Math.max(gaussian(effort_average, effort_variance), 0), 100)
+    })
+
+    var effective_strength_in_match = mem(function({athlete, match}) {
+      var base_pulling_strength_in_match =  intrinsic_strength({athlete : athlete});
+      var average_effort = 50;
+      var strength_modulated_for_effort_level = (effort_level_in_match({athlete: athlete, match: match}) / average_effort) * base_pulling_strength_in_match;
+      return strength_modulated_for_effort_level;
+    })
+
+    var total_pulling_strength_for_team = function({team, match}) {
+      return sum(map(function(athlete) { return effective_strength_in_match({athlete: athlete, match: match}) }, team))
+    }
+
+    var beat = function({team1, team2, match}){
+      return total_pulling_strength_for_team({team: team1, match: match}) > total_pulling_strength_for_team({team: team2, match: match})
+    }
+
+    var lost = function({team1, team2, match}){
+      return !beat({team1: team1, team2: team2, match: match})
+    }
+
+    var who_would_win_by_how_much = function({team1, team2, match}) {
+      var num_future_matches_to_simulate = 100;
+      var random_future_match_ids = mapN(function(x) {return uniform(match+1, 1000)}, num_future_matches_to_simulate);
+      var simulated_matches_won_by_team_2 = sum(map(
+            function(random_future_match_id) {
+              return lost({team1: team1, team2: team2, match: random_future_match_id})}, random_future_match_ids))
+      return simulated_matches_won_by_team_2 / num_future_matches_to_simulate;
+    }
+
+    // CONDITIONS
+// In the first match, Indiana and Lane lost to Taylor and Ness.
+condition(lost({team1: ['indiana', 'lane'], team2: ['taylor', 'ness'], match: 1}))
+// In the second match, Indiana and Casey lost to Taylor and Avery.
+condition(lost({team1: ['indiana', 'casey'], team2: ['taylor', 'avery'], match: 2}))
+// In the third match, Indiana and Kay lost to Taylor and Fey.
+condition(lost({team1: ['indiana', 'kay'], team2: ['taylor', 'fey'], match: 3}))
+
+    return {
+        query1: intrinsic_strength_rank({athlete: 'indiana', out_of_n_athletes: 100}),
+        query2: intrinsic_strength_rank({athlete: 'lane', out_of_n_athletes: 100}),
+        query3: intrinsic_strength_rank({athlete: 'taylor', out_of_n_athletes: 100}),
+        query4: effort_level_in_match({athlete: 'indiana', match: 2}),
+        query5: effort_level_in_match({athlete: 'lane', match: 1}),
+        query6: effort_level_in_match({athlete: 'taylor', match: 2}),
+        query7: who_would_win_by_how_much({team1: ['indiana', 'lane'], team2: ['casey', 'fey'], match: 4}),
+        query8: who_would_win_by_how_much({team1: ['indiana', 'taylor'], team2: ['lane', 'ness'], match: 5})
+    }
+}

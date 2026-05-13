@@ -1,0 +1,498 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<title>Wong et al. 2025 &mdash; human data</title>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+       max-width: 1300px; margin: 1.5em auto; padding: 0 1em; color: #222;
+       line-height: 1.5; }
+h1 { margin-bottom: 0.2em; }
+h2 { margin-top: 2em; }
+table { border-collapse: collapse; margin: 0.5em 0 2em; font-size: 0.92em; }
+th, td { border: 1px solid #ccc; padding: 0.3em 0.5em; text-align: right; }
+th { background: #f0f0f0; }
+td.key { text-align: left; padding: 0; width: 460px; max-width: 460px; }
+td.key span { display: block; padding: 0.3em 0.5em;
+               font-family: "SF Mono", Menlo, monospace; font-size: 0.85em;
+               white-space: nowrap; overflow-x: auto; }
+td.n { color: #666; }
+.s { color: #888; font-size: 0.85em; }
+td.sport-canoe-race  { background: #eef8ee; }
+td.sport-biathalon   { background: #eef0fa; }
+td.sport-tug-of-war  { background: #faeeee; }
+.note { background: #fff8e1; border-left: 4px solid #f1c40f;
+         padding: 0.6em 1em; margin: 1em 0; }
+ul { line-height: 1.7; }
+</style></head><body>
+
+<h1>Wong et al. 2025 &mdash; human response data</h1>
+<p>Source: <code>data/msa_cogsci_human_data.json</code></p>
+
+<h2>Summary</h2>
+<ul>
+<li><b>e1_explicit</b>: 21 vignettes (7 canoe-race, 7 biathalon, 7 tug-of-war), 16&ndash;20 participants/vignette, 8 queries/vignette, 1&ndash;5 clicks/query.</li>
+<li><b>e2_implicit</b>: 21 vignettes (7 canoe-race, 7 tug-of-war, 7 biathalon), 17&ndash;18 participants/vignette, 8 queries/vignette, 1&ndash;5 clicks/query.</li>
+</ul>
+<p>Each cell shows the across-participant mean &plusmn;std of each participant's
+mean click for that query, on a 0&ndash;100 response scale. <i>N</i> is the
+number of participants for that vignette. Hover the vignette name to see
+the full key.</p>
+
+<div class='note'>
+The vignette key encodes scenario structure
+(e.g. <code>team-confounded-opponent-12</code>,
+<code>team-explain-away-11</code>). Our codebase currently has just one
+canonical vignette per sport (in <code>scenarios/</code>); the human data
+covers seven structural variants per sport per experiment.
+</div>
+
+<h2>e1_explicit &mdash; full background</h2>
+<table>
+<thead><tr><th>sport</th><th>vignette</th><th>N</th>
+<th>q1</th>
+<th>q2</th>
+<th>q3</th>
+<th>q4</th>
+<th>q5</th>
+<th>q6</th>
+<th>q7</th>
+<th>q8</th>
+</tr></thead>
+<tbody>
+<tr><td class='sport-biathalon'>biathalon</td><td class='key'><span>biathalon_shooting-accuracy_team-confounded-partner-10-dec_win_how_much_explicit_continuous_variable</span></td><td class='n'>18</td>
+<td>27.4<span class='s'> &plusmn;18.2</span></td>
+<td>34.1<span class='s'> &plusmn;24.2</span></td>
+<td>62.0<span class='s'> &plusmn;12.5</span></td>
+<td>33.0<span class='s'> &plusmn;22.3</span></td>
+<td>30.3<span class='s'> &plusmn;17.4</span></td>
+<td>70.8<span class='s'> &plusmn;14.0</span></td>
+<td>81.1<span class='s'> &plusmn;15.0</span></td>
+<td>49.7<span class='s'> &plusmn;7.4</span></td>
+</tr>
+<tr><td class='sport-biathalon'>biathalon</td><td class='key'><span>biathalon_shooting-accuracy_team-confounded-partner-9-dec_win_how_much_explicit_continuous_variable</span></td><td class='n'>20</td>
+<td>78.6<span class='s'> &plusmn;17.4</span></td>
+<td>77.7<span class='s'> &plusmn;14.3</span></td>
+<td>45.9<span class='s'> &plusmn;14.2</span></td>
+<td>77.7<span class='s'> &plusmn;12.2</span></td>
+<td>74.7<span class='s'> &plusmn;14.1</span></td>
+<td>44.8<span class='s'> &plusmn;16.5</span></td>
+<td>35.1<span class='s'> &plusmn;27.6</span></td>
+<td>48.9<span class='s'> &plusmn;12.9</span></td>
+</tr>
+<tr><td class='sport-biathalon'>biathalon</td><td class='key'><span>biathalon_shooting-accuracy_team-diverse-17-dec_win_how_much_explicit_continuous_variable</span></td><td class='n'>19</td>
+<td>68.5<span class='s'> &plusmn;21.4</span></td>
+<td>59.2<span class='s'> &plusmn;18.4</span></td>
+<td>43.0<span class='s'> &plusmn;13.3</span></td>
+<td>67.1<span class='s'> &plusmn;20.6</span></td>
+<td>67.9<span class='s'> &plusmn;14.9</span></td>
+<td>41.4<span class='s'> &plusmn;12.1</span></td>
+<td>42.1<span class='s'> &plusmn;31.1</span></td>
+<td>41.9<span class='s'> &plusmn;11.9</span></td>
+</tr>
+<tr><td class='sport-biathalon'>biathalon</td><td class='key'><span>biathalon_shooting-accuracy_team-explain-away-11b-dec_win_how_much_explicit_continuous_variable</span></td><td class='n'>18</td>
+<td>39.1<span class='s'> &plusmn;20.1</span></td>
+<td>44.8<span class='s'> &plusmn;16.2</span></td>
+<td>59.2<span class='s'> &plusmn;23.5</span></td>
+<td>62.0<span class='s'> &plusmn;24.9</span></td>
+<td>71.1<span class='s'> &plusmn;17.2</span></td>
+<td>50.0<span class='s'> &plusmn;23.3</span></td>
+<td>55.7<span class='s'> &plusmn;21.2</span></td>
+<td>50.3<span class='s'> &plusmn;16.3</span></td>
+</tr>
+<tr><td class='sport-biathalon'>biathalon</td><td class='key'><span>biathalon_shooting-accuracy_team-explain-away-confounded-opponent-partner-dec_win_how_much_explicit_continuous_variable</span></td><td class='n'>19</td>
+<td>76.3<span class='s'> &plusmn;9.1</span></td>
+<td>73.1<span class='s'> &plusmn;9.0</span></td>
+<td>38.4<span class='s'> &plusmn;12.7</span></td>
+<td>54.1<span class='s'> &plusmn;21.3</span></td>
+<td>49.7<span class='s'> &plusmn;19.6</span></td>
+<td>65.8<span class='s'> &plusmn;20.4</span></td>
+<td>29.6<span class='s'> &plusmn;18.6</span></td>
+<td>37.8<span class='s'> &plusmn;22.4</span></td>
+</tr>
+<tr><td class='sport-biathalon'>biathalon</td><td class='key'><span>biathalon_shooting-accuracy_team-strong-indirect-14-dec_win_how_much_explicit_continuous_variable</span></td><td class='n'>20</td>
+<td>42.8<span class='s'> &plusmn;21.2</span></td>
+<td>68.5<span class='s'> &plusmn;20.5</span></td>
+<td>46.0<span class='s'> &plusmn;15.7</span></td>
+<td>40.9<span class='s'> &plusmn;14.6</span></td>
+<td>52.5<span class='s'> &plusmn;17.8</span></td>
+<td>67.8<span class='s'> &plusmn;16.4</span></td>
+<td>53.0<span class='s'> &plusmn;17.2</span></td>
+<td>58.5<span class='s'> &plusmn;14.1</span></td>
+</tr>
+<tr><td class='sport-biathalon'>biathalon</td><td class='key'><span>biathalon_shooting-accuracy_team-weak-indirect-15-dec_win_how_much_explicit_continuous_variable</span></td><td class='n'>19</td>
+<td>64.5<span class='s'> &plusmn;14.3</span></td>
+<td>76.3<span class='s'> &plusmn;15.5</span></td>
+<td>32.4<span class='s'> &plusmn;19.8</span></td>
+<td>68.8<span class='s'> &plusmn;17.6</span></td>
+<td>78.2<span class='s'> &plusmn;11.8</span></td>
+<td>30.2<span class='s'> &plusmn;19.6</span></td>
+<td>26.2<span class='s'> &plusmn;20.2</span></td>
+<td>55.7<span class='s'> &plusmn;20.0</span></td>
+</tr>
+<tr><td class='sport-canoe-race'>canoe-race</td><td class='key'><span>canoe-race_effort_team-confounded-opponent-12-dec_win_how_much_explicit_continuous_variable</span></td><td class='n'>19</td>
+<td>33.3<span class='s'> &plusmn;15.8</span></td>
+<td>39.9<span class='s'> &plusmn;15.6</span></td>
+<td>71.0<span class='s'> &plusmn;19.3</span></td>
+<td>44.1<span class='s'> &plusmn;19.8</span></td>
+<td>49.0<span class='s'> &plusmn;19.0</span></td>
+<td>71.8<span class='s'> &plusmn;20.4</span></td>
+<td>56.6<span class='s'> &plusmn;16.2</span></td>
+<td>43.3<span class='s'> &plusmn;15.0</span></td>
+</tr>
+<tr><td class='sport-canoe-race'>canoe-race</td><td class='key'><span>canoe-race_effort_team-confounded-partner-10-dec_win_how_much_explicit_continuous_variable</span></td><td class='n'>18</td>
+<td>29.4<span class='s'> &plusmn;16.2</span></td>
+<td>29.5<span class='s'> &plusmn;16.6</span></td>
+<td>65.7<span class='s'> &plusmn;15.9</span></td>
+<td>37.2<span class='s'> &plusmn;23.4</span></td>
+<td>37.1<span class='s'> &plusmn;23.7</span></td>
+<td>69.0<span class='s'> &plusmn;15.5</span></td>
+<td>76.8<span class='s'> &plusmn;18.9</span></td>
+<td>45.8<span class='s'> &plusmn;13.8</span></td>
+</tr>
+<tr><td class='sport-canoe-race'>canoe-race</td><td class='key'><span>canoe-race_effort_team-explain-away-11-dec_win_how_much_explicit_continuous_variable</span></td><td class='n'>19</td>
+<td>73.1<span class='s'> &plusmn;9.4</span></td>
+<td>53.8<span class='s'> &plusmn;14.0</span></td>
+<td>38.0<span class='s'> &plusmn;17.7</span></td>
+<td>59.8<span class='s'> &plusmn;21.8</span></td>
+<td>52.6<span class='s'> &plusmn;19.3</span></td>
+<td>62.7<span class='s'> &plusmn;22.5</span></td>
+<td>38.4<span class='s'> &plusmn;17.3</span></td>
+<td>47.0<span class='s'> &plusmn;13.4</span></td>
+</tr>
+<tr><td class='sport-canoe-race'>canoe-race</td><td class='key'><span>canoe-race_effort_team-explain-away-confounded-opponent-partner-dec_win_how_much_explicit_continuous_variable</span></td><td class='n'>18</td>
+<td>77.6<span class='s'> &plusmn;12.5</span></td>
+<td>75.7<span class='s'> &plusmn;14.5</span></td>
+<td>40.8<span class='s'> &plusmn;25.0</span></td>
+<td>62.9<span class='s'> &plusmn;22.2</span></td>
+<td>48.4<span class='s'> &plusmn;21.8</span></td>
+<td>62.3<span class='s'> &plusmn;27.5</span></td>
+<td>31.2<span class='s'> &plusmn;24.2</span></td>
+<td>20.8<span class='s'> &plusmn;13.8</span></td>
+</tr>
+<tr><td class='sport-canoe-race'>canoe-race</td><td class='key'><span>canoe-race_effort_team-explain-away-diverse-confounded-partner-dec_win_how_much_explicit_continuous_variable</span></td><td class='n'>19</td>
+<td>65.0<span class='s'> &plusmn;20.7</span></td>
+<td>64.1<span class='s'> &plusmn;18.1</span></td>
+<td>49.4<span class='s'> &plusmn;17.2</span></td>
+<td>56.7<span class='s'> &plusmn;21.2</span></td>
+<td>55.2<span class='s'> &plusmn;20.4</span></td>
+<td>66.1<span class='s'> &plusmn;19.9</span></td>
+<td>51.7<span class='s'> &plusmn;23.7</span></td>
+<td>51.0<span class='s'> &plusmn;13.4</span></td>
+</tr>
+<tr><td class='sport-canoe-race'>canoe-race</td><td class='key'><span>canoe-race_effort_team-strong-indirect-13-dec_win_how_much_explicit_continuous_variable</span></td><td class='n'>19</td>
+<td>65.4<span class='s'> &plusmn;15.5</span></td>
+<td>43.8<span class='s'> &plusmn;16.3</span></td>
+<td>63.4<span class='s'> &plusmn;14.7</span></td>
+<td>73.9<span class='s'> &plusmn;10.1</span></td>
+<td>67.1<span class='s'> &plusmn;13.8</span></td>
+<td>54.9<span class='s'> &plusmn;21.9</span></td>
+<td>43.1<span class='s'> &plusmn;24.3</span></td>
+<td>43.1<span class='s'> &plusmn;21.1</span></td>
+</tr>
+<tr><td class='sport-canoe-race'>canoe-race</td><td class='key'><span>canoe-race_effort_team-strong-indirect-14-dec_win_how_much_explicit_continuous_variable</span></td><td class='n'>20</td>
+<td>40.5<span class='s'> &plusmn;18.0</span></td>
+<td>63.9<span class='s'> &plusmn;16.2</span></td>
+<td>52.5<span class='s'> &plusmn;17.4</span></td>
+<td>51.9<span class='s'> &plusmn;24.0</span></td>
+<td>55.1<span class='s'> &plusmn;21.7</span></td>
+<td>69.7<span class='s'> &plusmn;23.4</span></td>
+<td>58.3<span class='s'> &plusmn;22.5</span></td>
+<td>56.8<span class='s'> &plusmn;21.2</span></td>
+</tr>
+<tr><td class='sport-tug-of-war'>tug-of-war</td><td class='key'><span>tug-of-war_effort_team-confounded-opponent-12-dec_win_how_much_explicit_continuous_variable</span></td><td class='n'>19</td>
+<td>32.0<span class='s'> &plusmn;16.8</span></td>
+<td>40.2<span class='s'> &plusmn;17.4</span></td>
+<td>77.6<span class='s'> &plusmn;16.4</span></td>
+<td>43.9<span class='s'> &plusmn;15.6</span></td>
+<td>48.7<span class='s'> &plusmn;15.7</span></td>
+<td>75.4<span class='s'> &plusmn;16.1</span></td>
+<td>68.0<span class='s'> &plusmn;15.0</span></td>
+<td>47.6<span class='s'> &plusmn;19.0</span></td>
+</tr>
+<tr><td class='sport-tug-of-war'>tug-of-war</td><td class='key'><span>tug-of-war_effort_team-confounded-partner-10-dec_win_how_much_explicit_continuous_variable</span></td><td class='n'>18</td>
+<td>32.9<span class='s'> &plusmn;23.3</span></td>
+<td>29.5<span class='s'> &plusmn;19.2</span></td>
+<td>69.5<span class='s'> &plusmn;12.3</span></td>
+<td>45.8<span class='s'> &plusmn;29.5</span></td>
+<td>43.2<span class='s'> &plusmn;25.3</span></td>
+<td>68.7<span class='s'> &plusmn;16.7</span></td>
+<td>71.2<span class='s'> &plusmn;27.3</span></td>
+<td>53.8<span class='s'> &plusmn;18.5</span></td>
+</tr>
+<tr><td class='sport-tug-of-war'>tug-of-war</td><td class='key'><span>tug-of-war_effort_team-explain-away-confounded-opponent-partner-dec_win_how_much_explicit_continuous_variable</span></td><td class='n'>19</td>
+<td>70.3<span class='s'> &plusmn;13.8</span></td>
+<td>72.9<span class='s'> &plusmn;11.5</span></td>
+<td>38.3<span class='s'> &plusmn;17.0</span></td>
+<td>52.3<span class='s'> &plusmn;25.0</span></td>
+<td>52.7<span class='s'> &plusmn;22.6</span></td>
+<td>66.4<span class='s'> &plusmn;27.3</span></td>
+<td>32.9<span class='s'> &plusmn;22.9</span></td>
+<td>37.3<span class='s'> &plusmn;27.8</span></td>
+</tr>
+<tr><td class='sport-tug-of-war'>tug-of-war</td><td class='key'><span>tug-of-war_effort_team-explain-away-diverse-confounded-partner-dec_win_how_much_explicit_continuous_variable</span></td><td class='n'>20</td>
+<td>73.7<span class='s'> &plusmn;16.6</span></td>
+<td>68.8<span class='s'> &plusmn;16.3</span></td>
+<td>57.8<span class='s'> &plusmn;15.2</span></td>
+<td>62.5<span class='s'> &plusmn;16.8</span></td>
+<td>53.5<span class='s'> &plusmn;16.3</span></td>
+<td>66.9<span class='s'> &plusmn;21.1</span></td>
+<td>48.2<span class='s'> &plusmn;21.6</span></td>
+<td>50.3<span class='s'> &plusmn;15.2</span></td>
+</tr>
+<tr><td class='sport-tug-of-war'>tug-of-war</td><td class='key'><span>tug-of-war_effort_team-round-robin-20-dec_win_how_much_explicit_continuous_variable</span></td><td class='n'>17</td>
+<td>28.2<span class='s'> &plusmn;17.7</span></td>
+<td>52.2<span class='s'> &plusmn;21.6</span></td>
+<td>61.7<span class='s'> &plusmn;15.5</span></td>
+<td>39.3<span class='s'> &plusmn;21.9</span></td>
+<td>68.8<span class='s'> &plusmn;16.4</span></td>
+<td>54.5<span class='s'> &plusmn;22.6</span></td>
+<td>58.7<span class='s'> &plusmn;19.0</span></td>
+<td>66.1<span class='s'> &plusmn;20.3</span></td>
+</tr>
+<tr><td class='sport-tug-of-war'>tug-of-war</td><td class='key'><span>tug-of-war_effort_team-weak-indirect-15-dec_win_how_much_explicit_continuous_variable</span></td><td class='n'>16</td>
+<td>55.9<span class='s'> &plusmn;18.8</span></td>
+<td>75.1<span class='s'> &plusmn;21.0</span></td>
+<td>35.5<span class='s'> &plusmn;17.3</span></td>
+<td>74.1<span class='s'> &plusmn;13.9</span></td>
+<td>78.7<span class='s'> &plusmn;16.9</span></td>
+<td>54.1<span class='s'> &plusmn;22.0</span></td>
+<td>31.9<span class='s'> &plusmn;26.8</span></td>
+<td>55.0<span class='s'> &plusmn;23.2</span></td>
+</tr>
+<tr><td class='sport-tug-of-war'>tug-of-war</td><td class='key'><span>tug-of-war_effort_team-weak-indirect-16-dec_win_how_much_explicit_continuous_variable</span></td><td class='n'>19</td>
+<td>39.2<span class='s'> &plusmn;17.5</span></td>
+<td>35.7<span class='s'> &plusmn;18.3</span></td>
+<td>69.4<span class='s'> &plusmn;19.2</span></td>
+<td>50.8<span class='s'> &plusmn;18.6</span></td>
+<td>47.5<span class='s'> &plusmn;17.4</span></td>
+<td>73.6<span class='s'> &plusmn;18.8</span></td>
+<td>66.5<span class='s'> &plusmn;18.4</span></td>
+<td>54.1<span class='s'> &plusmn;13.9</span></td>
+</tr>
+</tbody></table>
+
+<h2>e2_implicit &mdash; under-specified background</h2>
+<table>
+<thead><tr><th>sport</th><th>vignette</th><th>N</th>
+<th>q1</th>
+<th>q2</th>
+<th>q3</th>
+<th>q4</th>
+<th>q5</th>
+<th>q6</th>
+<th>q7</th>
+<th>q8</th>
+</tr></thead>
+<tbody>
+<tr><td class='sport-biathalon'>biathalon</td><td class='key'><span>biathalon_shooting-accuracy_team-confounded-partner-10-dec_win_how_much_implicit_continuous_variable</span></td><td class='n'>18</td>
+<td>32.0<span class='s'> &plusmn;20.1</span></td>
+<td>33.5<span class='s'> &plusmn;23.8</span></td>
+<td>60.9<span class='s'> &plusmn;14.9</span></td>
+<td>39.7<span class='s'> &plusmn;21.5</span></td>
+<td>34.6<span class='s'> &plusmn;17.9</span></td>
+<td>67.2<span class='s'> &plusmn;12.5</span></td>
+<td>76.8<span class='s'> &plusmn;14.0</span></td>
+<td>54.6<span class='s'> &plusmn;12.8</span></td>
+</tr>
+<tr><td class='sport-biathalon'>biathalon</td><td class='key'><span>biathalon_shooting-accuracy_team-confounded-partner-9-dec_win_how_much_implicit_continuous_variable</span></td><td class='n'>18</td>
+<td>81.9<span class='s'> &plusmn;11.1</span></td>
+<td>78.6<span class='s'> &plusmn;19.4</span></td>
+<td>39.5<span class='s'> &plusmn;20.4</span></td>
+<td>84.4<span class='s'> &plusmn;7.3</span></td>
+<td>76.3<span class='s'> &plusmn;18.0</span></td>
+<td>42.0<span class='s'> &plusmn;19.2</span></td>
+<td>28.4<span class='s'> &plusmn;28.1</span></td>
+<td>48.0<span class='s'> &plusmn;14.2</span></td>
+</tr>
+<tr><td class='sport-biathalon'>biathalon</td><td class='key'><span>biathalon_shooting-accuracy_team-diverse-17-dec_win_how_much_implicit_continuous_variable</span></td><td class='n'>18</td>
+<td>74.4<span class='s'> &plusmn;19.2</span></td>
+<td>61.5<span class='s'> &plusmn;16.4</span></td>
+<td>28.7<span class='s'> &plusmn;12.8</span></td>
+<td>76.2<span class='s'> &plusmn;17.8</span></td>
+<td>64.6<span class='s'> &plusmn;22.1</span></td>
+<td>37.8<span class='s'> &plusmn;22.1</span></td>
+<td>22.8<span class='s'> &plusmn;20.7</span></td>
+<td>45.2<span class='s'> &plusmn;15.6</span></td>
+</tr>
+<tr><td class='sport-biathalon'>biathalon</td><td class='key'><span>biathalon_shooting-accuracy_team-explain-away-11b-dec_win_how_much_implicit_continuous_variable</span></td><td class='n'>18</td>
+<td>47.5<span class='s'> &plusmn;17.5</span></td>
+<td>52.7<span class='s'> &plusmn;18.9</span></td>
+<td>64.5<span class='s'> &plusmn;18.2</span></td>
+<td>69.5<span class='s'> &plusmn;15.9</span></td>
+<td>70.2<span class='s'> &plusmn;18.2</span></td>
+<td>47.9<span class='s'> &plusmn;18.7</span></td>
+<td>51.6<span class='s'> &plusmn;16.3</span></td>
+<td>47.9<span class='s'> &plusmn;14.7</span></td>
+</tr>
+<tr><td class='sport-biathalon'>biathalon</td><td class='key'><span>biathalon_shooting-accuracy_team-explain-away-confounded-opponent-partner-dec_win_how_much_implicit_continuous_variable</span></td><td class='n'>17</td>
+<td>77.3<span class='s'> &plusmn;22.3</span></td>
+<td>73.8<span class='s'> &plusmn;22.2</span></td>
+<td>43.1<span class='s'> &plusmn;21.3</span></td>
+<td>58.7<span class='s'> &plusmn;16.9</span></td>
+<td>57.2<span class='s'> &plusmn;17.5</span></td>
+<td>66.0<span class='s'> &plusmn;22.8</span></td>
+<td>39.6<span class='s'> &plusmn;23.4</span></td>
+<td>34.9<span class='s'> &plusmn;21.8</span></td>
+</tr>
+<tr><td class='sport-biathalon'>biathalon</td><td class='key'><span>biathalon_shooting-accuracy_team-strong-indirect-14-dec_win_how_much_implicit_continuous_variable</span></td><td class='n'>18</td>
+<td>35.4<span class='s'> &plusmn;20.0</span></td>
+<td>64.2<span class='s'> &plusmn;23.2</span></td>
+<td>52.2<span class='s'> &plusmn;20.6</span></td>
+<td>33.0<span class='s'> &plusmn;16.4</span></td>
+<td>53.3<span class='s'> &plusmn;23.4</span></td>
+<td>59.2<span class='s'> &plusmn;22.6</span></td>
+<td>55.9<span class='s'> &plusmn;20.7</span></td>
+<td>59.2<span class='s'> &plusmn;19.0</span></td>
+</tr>
+<tr><td class='sport-biathalon'>biathalon</td><td class='key'><span>biathalon_shooting-accuracy_team-weak-indirect-15-dec_win_how_much_implicit_continuous_variable</span></td><td class='n'>17</td>
+<td>67.6<span class='s'> &plusmn;14.6</span></td>
+<td>73.6<span class='s'> &plusmn;27.1</span></td>
+<td>34.5<span class='s'> &plusmn;16.8</span></td>
+<td>69.9<span class='s'> &plusmn;15.0</span></td>
+<td>79.7<span class='s'> &plusmn;12.3</span></td>
+<td>37.1<span class='s'> &plusmn;12.4</span></td>
+<td>31.3<span class='s'> &plusmn;28.9</span></td>
+<td>61.3<span class='s'> &plusmn;20.5</span></td>
+</tr>
+<tr><td class='sport-canoe-race'>canoe-race</td><td class='key'><span>canoe-race_effort_team-confounded-opponent-12-dec_win_how_much_implicit_continuous_variable</span></td><td class='n'>18</td>
+<td>28.1<span class='s'> &plusmn;18.0</span></td>
+<td>30.2<span class='s'> &plusmn;16.3</span></td>
+<td>79.8<span class='s'> &plusmn;14.6</span></td>
+<td>36.8<span class='s'> &plusmn;24.4</span></td>
+<td>41.1<span class='s'> &plusmn;23.3</span></td>
+<td>69.8<span class='s'> &plusmn;24.3</span></td>
+<td>72.9<span class='s'> &plusmn;14.2</span></td>
+<td>45.8<span class='s'> &plusmn;13.9</span></td>
+</tr>
+<tr><td class='sport-canoe-race'>canoe-race</td><td class='key'><span>canoe-race_effort_team-confounded-partner-10-dec_win_how_much_implicit_continuous_variable</span></td><td class='n'>18</td>
+<td>31.7<span class='s'> &plusmn;15.9</span></td>
+<td>32.5<span class='s'> &plusmn;16.0</span></td>
+<td>56.4<span class='s'> &plusmn;13.5</span></td>
+<td>50.0<span class='s'> &plusmn;23.2</span></td>
+<td>49.1<span class='s'> &plusmn;24.7</span></td>
+<td>67.3<span class='s'> &plusmn;14.8</span></td>
+<td>69.3<span class='s'> &plusmn;22.9</span></td>
+<td>57.0<span class='s'> &plusmn;15.8</span></td>
+</tr>
+<tr><td class='sport-canoe-race'>canoe-race</td><td class='key'><span>canoe-race_effort_team-explain-away-11-dec_win_how_much_implicit_continuous_variable</span></td><td class='n'>17</td>
+<td>72.8<span class='s'> &plusmn;19.1</span></td>
+<td>63.3<span class='s'> &plusmn;16.0</span></td>
+<td>38.5<span class='s'> &plusmn;20.9</span></td>
+<td>56.7<span class='s'> &plusmn;24.1</span></td>
+<td>53.7<span class='s'> &plusmn;20.6</span></td>
+<td>75.7<span class='s'> &plusmn;17.7</span></td>
+<td>35.2<span class='s'> &plusmn;23.9</span></td>
+<td>38.5<span class='s'> &plusmn;18.4</span></td>
+</tr>
+<tr><td class='sport-canoe-race'>canoe-race</td><td class='key'><span>canoe-race_effort_team-explain-away-confounded-opponent-partner-dec_win_how_much_implicit_continuous_variable</span></td><td class='n'>18</td>
+<td>72.3<span class='s'> &plusmn;12.7</span></td>
+<td>71.9<span class='s'> &plusmn;13.3</span></td>
+<td>48.4<span class='s'> &plusmn;20.9</span></td>
+<td>60.4<span class='s'> &plusmn;18.5</span></td>
+<td>57.9<span class='s'> &plusmn;21.6</span></td>
+<td>72.2<span class='s'> &plusmn;16.2</span></td>
+<td>43.8<span class='s'> &plusmn;22.5</span></td>
+<td>40.3<span class='s'> &plusmn;19.5</span></td>
+</tr>
+<tr><td class='sport-canoe-race'>canoe-race</td><td class='key'><span>canoe-race_effort_team-explain-away-diverse-confounded-partner-dec_win_how_much_implicit_continuous_variable</span></td><td class='n'>18</td>
+<td>76.9<span class='s'> &plusmn;14.5</span></td>
+<td>77.6<span class='s'> &plusmn;11.4</span></td>
+<td>43.6<span class='s'> &plusmn;18.7</span></td>
+<td>56.4<span class='s'> &plusmn;26.5</span></td>
+<td>57.0<span class='s'> &plusmn;27.7</span></td>
+<td>68.9<span class='s'> &plusmn;22.3</span></td>
+<td>30.6<span class='s'> &plusmn;19.2</span></td>
+<td>42.3<span class='s'> &plusmn;18.0</span></td>
+</tr>
+<tr><td class='sport-canoe-race'>canoe-race</td><td class='key'><span>canoe-race_effort_team-strong-indirect-13-dec_win_how_much_implicit_continuous_variable</span></td><td class='n'>17</td>
+<td>66.5<span class='s'> &plusmn;24.4</span></td>
+<td>45.7<span class='s'> &plusmn;20.7</span></td>
+<td>65.6<span class='s'> &plusmn;21.8</span></td>
+<td>78.3<span class='s'> &plusmn;15.6</span></td>
+<td>69.1<span class='s'> &plusmn;18.9</span></td>
+<td>53.8<span class='s'> &plusmn;18.2</span></td>
+<td>44.6<span class='s'> &plusmn;23.6</span></td>
+<td>41.3<span class='s'> &plusmn;23.5</span></td>
+</tr>
+<tr><td class='sport-canoe-race'>canoe-race</td><td class='key'><span>canoe-race_effort_team-strong-indirect-14-dec_win_how_much_implicit_continuous_variable</span></td><td class='n'>18</td>
+<td>39.1<span class='s'> &plusmn;23.4</span></td>
+<td>71.3<span class='s'> &plusmn;12.0</span></td>
+<td>46.4<span class='s'> &plusmn;20.1</span></td>
+<td>53.1<span class='s'> &plusmn;24.9</span></td>
+<td>67.2<span class='s'> &plusmn;22.1</span></td>
+<td>61.4<span class='s'> &plusmn;27.2</span></td>
+<td>51.9<span class='s'> &plusmn;22.4</span></td>
+<td>53.5<span class='s'> &plusmn;16.5</span></td>
+</tr>
+<tr><td class='sport-tug-of-war'>tug-of-war</td><td class='key'><span>tug-of-war_effort_team-confounded-opponent-12-dec_win_how_much_implicit_continuous_variable</span></td><td class='n'>18</td>
+<td>32.0<span class='s'> &plusmn;19.1</span></td>
+<td>36.8<span class='s'> &plusmn;17.7</span></td>
+<td>78.1<span class='s'> &plusmn;10.7</span></td>
+<td>33.0<span class='s'> &plusmn;17.3</span></td>
+<td>44.0<span class='s'> &plusmn;20.5</span></td>
+<td>71.9<span class='s'> &plusmn;24.3</span></td>
+<td>59.6<span class='s'> &plusmn;17.9</span></td>
+<td>46.6<span class='s'> &plusmn;21.0</span></td>
+</tr>
+<tr><td class='sport-tug-of-war'>tug-of-war</td><td class='key'><span>tug-of-war_effort_team-confounded-partner-10-dec_win_how_much_implicit_continuous_variable</span></td><td class='n'>18</td>
+<td>28.7<span class='s'> &plusmn;17.7</span></td>
+<td>26.0<span class='s'> &plusmn;15.3</span></td>
+<td>59.6<span class='s'> &plusmn;9.3</span></td>
+<td>52.1<span class='s'> &plusmn;19.0</span></td>
+<td>47.7<span class='s'> &plusmn;20.9</span></td>
+<td>63.4<span class='s'> &plusmn;14.4</span></td>
+<td>74.7<span class='s'> &plusmn;18.3</span></td>
+<td>54.1<span class='s'> &plusmn;9.7</span></td>
+</tr>
+<tr><td class='sport-tug-of-war'>tug-of-war</td><td class='key'><span>tug-of-war_effort_team-explain-away-confounded-opponent-partner-dec_win_how_much_implicit_continuous_variable</span></td><td class='n'>17</td>
+<td>74.3<span class='s'> &plusmn;13.4</span></td>
+<td>71.7<span class='s'> &plusmn;17.4</span></td>
+<td>39.9<span class='s'> &plusmn;20.7</span></td>
+<td>56.3<span class='s'> &plusmn;21.9</span></td>
+<td>55.3<span class='s'> &plusmn;19.9</span></td>
+<td>61.6<span class='s'> &plusmn;27.4</span></td>
+<td>34.6<span class='s'> &plusmn;29.2</span></td>
+<td>36.3<span class='s'> &plusmn;25.8</span></td>
+</tr>
+<tr><td class='sport-tug-of-war'>tug-of-war</td><td class='key'><span>tug-of-war_effort_team-explain-away-diverse-confounded-partner-dec_win_how_much_implicit_continuous_variable</span></td><td class='n'>18</td>
+<td>75.8<span class='s'> &plusmn;11.4</span></td>
+<td>76.2<span class='s'> &plusmn;12.8</span></td>
+<td>49.1<span class='s'> &plusmn;20.2</span></td>
+<td>61.3<span class='s'> &plusmn;23.7</span></td>
+<td>64.2<span class='s'> &plusmn;20.2</span></td>
+<td>72.3<span class='s'> &plusmn;24.1</span></td>
+<td>49.9<span class='s'> &plusmn;27.2</span></td>
+<td>43.7<span class='s'> &plusmn;11.0</span></td>
+</tr>
+<tr><td class='sport-tug-of-war'>tug-of-war</td><td class='key'><span>tug-of-war_effort_team-round-robin-20-dec_win_how_much_implicit_continuous_variable</span></td><td class='n'>17</td>
+<td>24.8<span class='s'> &plusmn;18.3</span></td>
+<td>52.4<span class='s'> &plusmn;18.2</span></td>
+<td>61.4<span class='s'> &plusmn;16.7</span></td>
+<td>43.6<span class='s'> &plusmn;28.7</span></td>
+<td>69.5<span class='s'> &plusmn;17.3</span></td>
+<td>57.7<span class='s'> &plusmn;13.4</span></td>
+<td>63.2<span class='s'> &plusmn;24.4</span></td>
+<td>61.9<span class='s'> &plusmn;22.0</span></td>
+</tr>
+<tr><td class='sport-tug-of-war'>tug-of-war</td><td class='key'><span>tug-of-war_effort_team-weak-indirect-15-dec_win_how_much_implicit_continuous_variable</span></td><td class='n'>18</td>
+<td>57.9<span class='s'> &plusmn;12.5</span></td>
+<td>73.1<span class='s'> &plusmn;12.4</span></td>
+<td>27.1<span class='s'> &plusmn;16.9</span></td>
+<td>66.2<span class='s'> &plusmn;16.7</span></td>
+<td>72.3<span class='s'> &plusmn;19.6</span></td>
+<td>50.8<span class='s'> &plusmn;20.4</span></td>
+<td>34.3<span class='s'> &plusmn;21.3</span></td>
+<td>61.8<span class='s'> &plusmn;11.3</span></td>
+</tr>
+<tr><td class='sport-tug-of-war'>tug-of-war</td><td class='key'><span>tug-of-war_effort_team-weak-indirect-16-dec_win_how_much_implicit_continuous_variable</span></td><td class='n'>18</td>
+<td>28.8<span class='s'> &plusmn;12.3</span></td>
+<td>28.9<span class='s'> &plusmn;19.0</span></td>
+<td>74.3<span class='s'> &plusmn;13.3</span></td>
+<td>49.9<span class='s'> &plusmn;24.1</span></td>
+<td>41.4<span class='s'> &plusmn;22.7</span></td>
+<td>74.7<span class='s'> &plusmn;15.4</span></td>
+<td>71.7<span class='s'> &plusmn;20.5</span></td>
+<td>50.3<span class='s'> &plusmn;17.0</span></td>
+</tr>
+</tbody></table>
+
+</body></html>

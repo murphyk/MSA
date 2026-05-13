@@ -1,0 +1,113 @@
+var queryLabels = {
+  query1: "Out of 100 random athletes, where do you think Indiana ranks in terms of intrinsic strength?",
+  query2: "Out of 100 random athletes, where do you think Lane ranks in terms of intrinsic strength?",
+  query3: "Out of 100 random athletes, where do you think Taylor ranks in terms of intrinsic strength?",
+  query4: "On a percentage scale from 0 to 100%, how much effort do you think Indiana put into the second match?",
+  query5: "On a percentage scale from 0 to 100%, how much effort do you think Lane put into the first match?",
+  query6: "On a percentage scale from 0 to 100%, how much effort do you think Taylor put into the second match?",
+  query7: "In a new match later this same day between Indiana and Lane (Team 1) and Casey and Fey (Team 2), who would win and by how much?",
+  query8: "In a new match later this same day between Indiana and Taylor (Team 1) and Lane and Ness (Team 2), who would win and by how much?"
+};
+
+var model = function() {
+    // BACKGROUND KNOWLEDGE
+    // An athlete’s intrinsic strength remains constant throughout a tournament. 
+    // It is an underlying attribute that varies among athletes.
+    var intrinsic_strength = mem(function ({athlete}) {
+      // Arbitrary measure of strength, centered around 100.
+      var parameter_intrinsic_strength_average = 100;
+      var parameter_intrinsic_strength_variance = 20;
+      return Math.max(gaussian(parameter_intrinsic_strength_average, parameter_intrinsic_strength_variance), 1);
+    });
+
+    // An athlete's intrinsic strength ranking out of n other athletes is the number of other athletes 
+    // we might expect them to be stronger than out of N total random athletes.
+    var intrinsic_strength_rank = function({athlete, out_of_n_athletes}) {
+        var random_athlete_ids = mapN(function(x) {return 'random_athlete_' + x}, out_of_n_athletes - 1);
+        return sum(map(
+            function(random_athlete_id) {
+              return intrinsic_strength({athlete: athlete}) > intrinsic_strength({athlete: random_athlete_id})
+            }, random_athlete_ids));
+    };
+
+    // Athletes also vary in the effort that they put into any given match. 
+    // Most of the time, people pull with a moderately high amount of effort. 
+    // Sometimes, an athlete won’t put in much effort (fraction). 
+    // Other times, they may put in a lot of effort and pull extra hard.
+    var effort_level_in_match = mem(function({athlete, match}) {
+      // We model effort as a percentage multiplier (0 to 150%).
+      var low_effort_prior = 0.15;
+      var moderate_effort_prior = 0.70;
+      var high_effort_prior = 0.15;
+
+      var low_effort_mean = 60; // 60% of strength
+      var moderate_effort_mean = 100; // 100% of strength
+      var high_effort_mean = 130; // 130% of strength
+      var effort_variance = 10;
+
+      var effort_average = categorical({
+        ps: [low_effort_prior, moderate_effort_prior, high_effort_prior], 
+        vs: [low_effort_mean, moderate_effort_mean, high_effort_mean]
+      });
+
+      return Math.min(Math.max(gaussian(effort_average, effort_variance), 0), 150);
+    });
+
+    // How hard each athlete pulls in a given match is determined by their intrinsic strength, 
+    // modified by how much effort they put in.
+    var individual_pulling_force = function({athlete, match}) {
+      var strength = intrinsic_strength({athlete: athlete});
+      var effort = effort_level_in_match({athlete: athlete, match: match}) / 100;
+      return strength * effort;
+    };
+
+    // How hard a team pulls overall in any given match is determined by the total amount 
+    // that all of the athletes on the team pull in that match.
+    var team_total_pulling_power = function({team, match}) {
+      return sum(map(function(athlete) { 
+        return individual_pulling_force({athlete: athlete, match: match}); 
+      }, team));
+    };
+
+    // The team that pulls the hardest in a given match wins.
+    var beat = function({team1, team2, match}) {
+      return team_total_pulling_power({team: team1, match: match}) > team_total_pulling_power({team: team2, match: match});
+    };
+
+    // A team loses if they did not pull harder than the other team.
+    var lost = function({team1, team2, match}) {
+      return !beat({team1: team1, team2: team2, match: match});
+    };
+
+    // To calculate who would win and by how much, we calculate the likelihood that team 2 wins.
+    var who_would_win_by_how_much = function({team1, team2, match}) {
+      var num_future_matches = 100;
+      var random_future_match_ids = mapN(function(x) {return match + 100 + x}, num_future_matches);
+
+      var team_2_wins = sum(map(function(m_id) {
+        return lost({team1: team1, team2: team2, match: m_id});
+      }, random_future_match_ids));
+
+      return team_2_wins / num_future_matches;
+    };
+
+    // CONDITIONS
+    // In the first match, Indiana and Lane lost to Taylor and Ness.
+    condition(lost({team1: ['indiana', 'lane'], team2: ['taylor', 'ness'], match: 1}))
+    // In the second match, Indiana and Casey lost to Taylor and Avery.
+    condition(lost({team1: ['indiana', 'casey'], team2: ['taylor', 'avery'], match: 2}))
+    // In the third match, Indiana and Kay lost to Taylor and Fey.
+    condition(lost({team1: ['indiana', 'kay'], team2: ['taylor', 'fey'], match: 3}))
+
+    // QUERIES
+    return {
+        query1: intrinsic_strength_rank({athlete: 'indiana', out_of_n_athletes: 100}),
+        query2: intrinsic_strength_rank({athlete: 'lane', out_of_n_athletes: 100}),
+        query3: intrinsic_strength_rank({athlete: 'taylor', out_of_n_athletes: 100}),
+        query4: effort_level_in_match({athlete: 'indiana', match: 2}),
+        query5: effort_level_in_match({athlete: 'lane', match: 1}),
+        query6: effort_level_in_match({athlete: 'taylor', match: 2}),
+        query7: who_would_win_by_how_much({team1: ['indiana', 'lane'], team2: ['casey', 'fey'], match: 4}),
+        query8: who_would_win_by_how_much({team1: ['indiana', 'taylor'], team2: ['lane', 'ness'], match: 5})
+    };
+};

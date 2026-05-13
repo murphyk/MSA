@@ -5,12 +5,12 @@
 <title>MSA workflow</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
-         max-width: 920px; margin: 2em auto; padding: 0 1.2em; line-height: 1.5; color: #222; }
-  h1   { margin-bottom: 0.1em; }
-  h2   { margin-top: 2em; border-bottom: 1px solid #ddd; padding-bottom: 0.2em; }
-  h3   { margin-top: 1.5em; }
+         max-width: 960px; margin: 2em auto; padding: 0 1.2em; line-height: 1.55; color: #222; }
+  h1 { margin-bottom: 0.1em; }
+  h2 { margin-top: 2em; border-bottom: 1px solid #ddd; padding-bottom: 0.2em; }
+  h3 { margin-top: 1.6em; }
   code, pre { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 0.93em; }
-  pre  { background: #f5f5f5; padding: 0.8em 1em; border-radius: 4px; overflow-x: auto; }
+  pre { background: #f5f5f5; padding: 0.8em 1em; border-radius: 4px; overflow-x: auto; }
   code { background: #f5f5f5; padding: 0.1em 0.3em; border-radius: 3px; }
   pre code { background: none; padding: 0; }
   .note { background: #fff8e1; border-left: 4px solid #f1c40f; padding: 0.6em 1em; margin: 1em 0; }
@@ -22,292 +22,212 @@
 <body>
 
 <h1>MSA workflow</h1>
+
 <p>Pipeline for (a) auto-generating a WebPPL world-model from a natural-language
-scenario (the "MSA" method of <a href="https://arxiv.org/abs/2507.12547">Wong et al. 2025</a>),
+scenario (the &ldquo;MSA&rdquo; method of
+<a href="https://arxiv.org/abs/2507.12547">Wong et al. 2025</a>),
 (b) running posterior inference on the resulting program, and (c) comparing
-its samples against a gold reference.</p>
+its samples to a hand-crafted gold model run on the <em>same</em> test
+scenario.</p>
 
 <h2>Directory layout</h2>
 <pre><code>MSA/
-├── scenarios/                # Source scenarios + parsed JSON
-│   ├── tug.txt               # annotated with <START_…>/<END_…> markers
-│   └── tug.json              # produced by convert_scenarios.py
-├── prompts/                  # Prompt templates (paper Appendix)
-├── models/{method}/{model}.wppl
-├── samples/{method}/{model}.json
-├── comparisons/{m1}_vs_{m2}/{model}/   # figures, metrics.csv, comparison.html
-├── intermediates/{method}/{model}/     # per-LLM-call prompts + responses
-├── test/msa_smoke.py         # Fast end-to-end check (flash + k_graph=1)
-├── docs/
-│   ├── workflow.html         # this file
-│   └── jsd.tex               # noise floor of the JS-distance metric
-├── convert_scenarios.py      # scenarios/*.txt → scenarios/*.json
-├── formalize.py              # 3-step LLM pipeline
-├── msa.py                    # Top-level driver
-├── get_samples.wppl          # WebPPL inference driver
-├── get_samples.js            # Node wrapper around webppl
-├── compare_samples.py        # Per-query comparison + HTML report
-└── .env                      # OPENROUTER_API_KEY (gitignored)
+├── data/
+│   ├── train-scenarios/        # Hand-annotated scenarios used as in-context demos
+│   │   ├── biathalon.{txt,json}    # 5 sports: biathalon, canoe-race, tug-of-war,
+│   │   ├── canoe-race.{txt,json}   #           diving, exam
+│   │   ├── tug-of-war.{txt,json}
+│   │   ├── diving.{txt,json}
+│   │   └── exam.{txt,json}
+│   ├── test-scenarios/
+│   │   ├── e1/scenarios/{id}.txt   # 15 vignettes per sport, plain text
+│   │   └── e2/scenarios/{id}.txt   #   (BACKGROUND / CONDITIONS / QUERIES)
+│   ├── test_ids.json               # T=7 vignettes (per sport) covered by humans
+│   └── msa_cogsci_human_data.json  # Human responses to the 7×3 test vignettes
+├── prompts/                    # LLM prompt templates (paper Appendix)
+├── models/
+│   ├── gold/{sport}.wppl       # Hand-crafted gold model per train sport
+│   ├── gold_e1/{scenario}.wppl # Gold model specialised to one test scenario
+│   ├── msa_{llm}_e{e}_r{r}/{scenario}.wppl  # One per (run, scenario)
+│   └── ...
+├── samples/                    # Posterior samples (1000 by default) + queries
+│   ├── gold_e1/{scenario}.json
+│   ├── msa_{llm}_e{e}_r{r}/{scenario}.json
+│   └── ...
+├── intermediates/              # Per LLM call: prompts, raw responses, blocks
+├── comparisons/                # Figures, CSVs, comparison.html
+├── docs/{workflow.html,jsd.tex,human_data.html}
+├── test/msa_smoke.py           # ~30s end-to-end check
+├── msa.py                      # Top-level pipeline driver
+├── formalize.py                # 3-step LLM formalize pipeline
+├── gold_for_test.py            # Build gold model for a test scenario
+├── get_samples.wppl + .js      # WebPPL inference driver + Node wrapper
+├── plot_vs_gold.py             # Per-scenario / by-query-type scatter figures
+├── compare_samples.py          # Per-query distributional comparison (single pair)
+├── convert_scenarios.py        # train .txt → train .json (with parsed fields)
+├── inspect_human_data.py       # build docs/human_data.html
+└── .env                        # OPENROUTER_API_KEY (gitignored)
 </code></pre>
 
-<h2>Stage 1: scenarios</h2>
+<h2>Stage 1 — train and test scenarios</h2>
 
-<p>Each <code>scenarios/{name}.txt</code> is annotated with marker tags around
-five regions (scenario, language-to-code parse, scratchpad / concept trace,
-WebPPL model). <code>convert_scenarios.py</code> reads these and emits
-<code>scenarios/{name}.json</code> with eight fields stored as lists of lines:
-<code>background</code>, <code>conditions</code>, <code>query</code>,
-<code>parsed_conditions</code>, <code>parsed_queries</code>,
-<code>informal</code>, <code>graph</code>, <code>model</code>. These JSONs
-are the ground-truth examples that the formalize pipeline consults as
-in-context demos.</p>
+<p>Each <code>data/train-scenarios/{sport}.txt</code> is annotated with
+marker tags around five regions and converted to JSON via
+<code>convert_scenarios.py</code>. The resulting <code>{sport}.json</code>
+has fields <code>background, conditions, query, parsed_conditions,
+parsed_queries, informal, graph, model</code> (each as a list of lines so
+the JSON renders readably). These are the in-context demos.</p>
 
-<h2>Stage 2: formalize (LLM &rarr; WebPPL)</h2>
+<p>Each <code>data/test-scenarios/e{1,2}/scenarios/{id}.txt</code> is a plain
+BACKGROUND / CONDITIONS / QUERIES vignette (no annotations &mdash; that's
+what we're testing the LLM on). The 7 vignettes per sport covered by human
+data are listed in <code>data/test_ids.json</code>; the full test directory
+holds 15 per sport.</p>
 
-<p><code>formalize.py</code> implements the 3-step pipeline from the paper.
-For a target scenario, it uses the <em>other four</em> scenarios as shuffled
-in-context examples and calls an LLM through OpenRouter via
-<code>litellm</code>:</p>
+<p>Naming convention (sports): <code>biathalon</code>, <code>canoe-race</code>,
+<code>tug-of-war</code> (typo and hyphenation matching the Wong et al.
+dataset). Diving and exam exist only as train scenarios.</p>
+
+<h2>Stage 2 — formalize (LLM &rarr; WebPPL)</h2>
+
+<p><code>formalize.formalize(target, exclude_sport, llm, ...)</code> implements
+the 3-step pipeline:</p>
 <ol>
   <li><strong>Parse</strong> (<code>generate-parsing.txt</code>, T=0.2): translate
-      natural-language conditions and queries into WebPPL function calls
-      wrapped in <code>&lt;START_LANGUAGE_TO_WEBPPL_CODE&gt;</code> markers.</li>
+      NL conditions/queries into WebPPL stubs, wrapped in
+      <code>&lt;START_LANGUAGE_TO_WEBPPL_CODE&gt;</code> markers.</li>
   <li><strong>Graph</strong> (<code>generate-graph.txt</code>, T=0.5): generate
-      <code>k_graph</code> candidate <code>&lt;START_SCRATCHPAD&gt;</code>
-      blocks (informal background + concept-dependency trace) in parallel
-      using a <code>ThreadPoolExecutor</code>. Each is scored 0&ndash;10 by an
-      LLM call to <code>score-graph.txt</code>; the best wins. With
-      <code>k_graph&gt;1</code> the K generate-and-score pairs all happen
-      concurrently, so wall-clock time is roughly one round-trip rather than
-      <code>2K</code>.</li>
+      <code>K</code> candidate <code>&lt;START_SCRATCHPAD&gt;</code> blocks
+      <strong>in parallel</strong> (one ThreadPoolExecutor per K, releasing the
+      GIL during LLM I/O). Each is scored 0&ndash;10 by an LLM call to
+      <code>score-graph.txt</code>; the best wins.</li>
   <li><strong>Model</strong> (<code>generate-model.txt</code>, T=0.2): produce the
-      final <code>&lt;START_WEBPPL_MODEL&gt;</code> body, given the scenario,
-      parse, and best graph.</li>
+      <code>&lt;START_WEBPPL_MODEL&gt;</code> body given scenario + parse +
+      best graph.</li>
 </ol>
 
-<p>LLM labels are short aliases &mdash; <code>pro</code> &rarr;
-<code>openrouter/google/gemini-3.1-pro-preview</code>, <code>flash</code> &rarr;
-<code>openrouter/google/gemini-3-flash-preview</code>, etc. Override via
-<code>MSA_LLM_PRO=...</code> env var, or pass the full model id directly
-(any litellm-supported provider).</p>
+<p>In-context demos: the four train scenarios that <em>don't</em> match the test
+sport. So testing a <code>biathalon</code> vignette uses
+<code>canoe-race + tug-of-war + diving + exam</code> as examples.</p>
 
-<h2>Stage 3: top-level driver</h2>
+<p>LLM access via <code>litellm</code> against OpenRouter. Short labels in
+<code>formalize.LLM_MAP</code> map to OpenRouter model ids
+(<code>pro</code> &rarr; <code>openrouter/google/gemini-3.1-pro-preview</code>,
+<code>flash</code> &rarr; <code>openrouter/google/gemini-3-flash-preview</code>,
+...). Override any of them via env vars (<code>MSA_LLM_PRO=...</code>) or pass
+a full model id directly.</p>
 
-<p><code>msa.py --scenario {name} [--expt EXPT] [--llm pro] [--k-graph 8]</code>
-glues everything together:</p>
+<h2>Stage 3 — top-level driver</h2>
+
+<pre><code>python msa.py --scenario {id} --expt {1|2}
+             [--llm flash] [--n-runs 3] [--k-graph 4]
+             [--max-parallel 4] [--force]
+
+python msa.py --sport {biathalon|canoe-race|tug-of-war} --expt {1|2}
+             # same flags; expands to all T=7 ids from data/test_ids.json</code></pre>
+
+<p>For each (scenario, run) the driver:</p>
 <ol>
-  <li>Calls <code>formalize()</code> to produce the WebPPL source.</li>
-  <li>Prepends <code>var queryLabels = {...}</code> (built from the scenario's
-      <code>Query N:</code> lines) so the LLM-generated model &mdash; which doesn't
-      know about <code>queryLabels</code> &mdash; works with the inference wrapper.</li>
-  <li>Saves to <code>models/{method}/{scenario}.wppl</code> where
-      <code>method = msa_{llm}{suffix}</code>:
-      <code>_e{N}</code> for numeric expts (e.g. <code>--expt 1</code> &rarr;
-      <code>msa_pro_e1</code>) and <code>_{name}</code> for word expts
-      (<code>--expt smoke</code> &rarr; <code>msa_pro_smoke</code>).</li>
-  <li>Runs <code>get_samples.js</code> for inference, then
-      <code>compare_samples.py</code> against the <code>gold1</code> reference.</li>
+  <li>Loads the test scenario (<code>data/test-scenarios/e{e}/scenarios/{id}.txt</code>).</li>
+  <li>Calls <code>formalize()</code> to produce the WebPPL model and the
+      step-1 parse block.</li>
+  <li>Prepends <code>var queryLabels = {...}</code> built from the scenario's
+      <code>Query N: ...</code> lines (the LLM doesn't produce labels).</li>
+  <li>Saves <code>models/msa_{llm}_e{e}_r{r}/{id}.wppl</code> and runs
+      <code>get_samples.js</code> to produce
+      <code>samples/msa_{llm}_e{e}_r{r}/{id}.json</code> (1000 samples).</li>
+  <li>Builds a <em>gold-for-this-test-scenario</em> model: takes
+      <code>models/gold/{sport}.wppl</code>, strips its hard-coded
+      <code>// CONDITIONS</code>/return block, and splices in the LLM-parsed
+      conditions + a new return block synthesised from the parsed query
+      expressions. Saves to <code>models/gold_e{e}/{id}.wppl</code> and
+      runs inference into <code>samples/gold_e{e}/{id}.json</code>.</li>
 </ol>
 
-<h2>Stage 4: model contract</h2>
+<p>Concurrency: <code>--n-runs</code> MSA runs for one scenario run concurrently
+(each internally fans out K graph workers); <code>--max-parallel</code>
+scenarios in flight at once for <code>--sport</code> mode. Each MSA run has its
+own RNG seed so example-shuffling differs across runs.</p>
 
-<p>Each <code>.wppl</code> file under <code>models/{method}/</code> defines:</p>
+<h3>Caching (on by default)</h3>
+
+<p>For each run, if <code>samples/{method}_r{r}/{id}.json</code> <em>and</em>
+the cached parse block (<code>intermediates/.../1_parse_block.txt</code>) both
+exist, the driver skips the LLM and inference entirely and re-reads the parse
+block from disk. Gold has its own check on
+<code>samples/gold_e{e}/{id}.json</code>. The status line shows what was
+cached vs recomputed, e.g.</p>
+<pre><code>✓ tug-of-war_effort_team-...: ok (2 MSA fresh, 1 MSA cached, gold fresh)</code></pre>
+<p>Pass <code>--force</code> to ignore the cache and recompute from scratch.</p>
+
+<h3>Outputs</h3>
+
+<pre><code>samples/msa_{llm}_e{e}_r{r}/{id}.json     # one per run
+samples/gold_e{e}/{id}.json               # one per scenario
+models/...                                 # parallel structure
+intermediates/{method}/{id}/{1_parse_*, 2_graph_*, 3_model_*}
+</code></pre>
+
+<h2>Stage 4 — comparison + figures</h2>
+
+<h3><code>plot_vs_gold.py</code></h3>
+
+<pre><code>python plot_vs_gold.py --sport {sport} --method {base_method} --expt {e}
+python plot_vs_gold.py --scenario {id}  --method {base_method} --expt {e}</code></pre>
+
+<p>For each test scenario in the sport, computes per-query MSA mean
+(across N runs) and gold mean. Probability queries (range [0, 1]) are
+auto-scaled to 0&ndash;100 so all queries share a 0&ndash;100 axis.
+Writes two figures to
+<code>comparisons/{method}_vs_gold_e{e}/</code>:</p>
 <ul>
-  <li><code>model</code> &mdash; a function with no arguments, returning a dict
-      of query values. Calls <code>condition(...)</code> for observed evidence.</li>
-  <li><code>queryLabels</code> &mdash; a dict mapping each query key to a
-      human-readable description.</li>
-</ul>
-<p>The model file does <em>not</em> run inference itself; that's the driver's job.</p>
-
-<h2>Stage 2: sampling</h2>
-
-<h3><code>get_samples.wppl</code> &mdash; the inference driver</h3>
-<p>Reads <code>N</code> and <code>METHOD</code> from process environment, runs <code>Infer({model, method, samples: N})</code>, and emits two blocks to stdout between marker lines:</p>
-<pre><code>__SAMPLES_BEGIN__
-[ {query1: ..., query2: ...}, ... ]
-__SAMPLES_END__
-__QUERIES_BEGIN__
-{ "query1": "...", ... }
-__QUERIES_END__</code></pre>
-
-<h3><code>get_samples.js</code> &mdash; the Node wrapper</h3>
-<p>Concatenates the chosen model file with <code>get_samples.wppl</code> into a temp file (WebPPL's CLI accepts only one program file), invokes <code>webppl</code> with <code>--random-seed</code>, parses the marker blocks, and writes a JSON file of the form:</p>
-<pre><code>{
-  "queries": {"query1": "Bob rank (out of 100)", ...},
-  "samples": [{"query1": 62, "query2": 93, ...}, ...]
-}</code></pre>
-
-<p>Invocation:</p>
-<pre><code>node get_samples.js --model {biathlon|canoe|diving|exam|tug} \
-                    [--method LABEL]    (default: gold)              \
-                    [--n N]             (default: 1000)              \
-                    [--seed SEED]       (default: 0)                 \
-                    [--algo ALGO]       (default: rejection)         \
-                    [--model-dir DIR]   (default: models/{method})</code></pre>
-
-<p>The wrapper reads <code>{model-dir}/{model}.wppl</code> (default
-<code>models/{method}/{model}.wppl</code>), runs webppl with
-<code>--random-seed {seed}</code>, and writes
-<code>samples/{method}/{model}.json</code>. Experiment labels live in the
-method name (e.g. <code>msa_pro_e1</code>), not in the model file name.
-Examples:</p>
-<ul>
-  <li><code>--method gold --seed 0</code> &rarr; reads
-      <code>models/gold/tug.wppl</code>, writes
-      <code>samples/gold/tug.json</code> (reproduces the existing gold
-      reference byte-for-byte).</li>
-  <li><code>--method gold1 --seed 1 --model-dir models/gold</code>
-      &rarr; reuses the gold source with a different seed, writes
-      <code>samples/gold1/tug.json</code>.</li>
-  <li><code>--method msa_pro_e1</code> &rarr; reads
-      <code>models/msa_pro_e1/tug.wppl</code>, writes
-      <code>samples/msa_pro_e1/tug.json</code>.</li>
-</ul>
-<p>Note: <code>--method</code> here is a label for the <em>output</em>
-directory (e.g. <code>gold</code>, <code>gold1</code>, <code>learned</code>),
-not the webppl inference algorithm &mdash; that's <code>--algo</code>
-(<code>rejection</code> / <code>MCMC</code> / <code>SMC</code> / ...).</p>
-
-<h3>Webppl quirks worth knowing</h3>
-<ul>
-  <li>WebPPL's CLI takes <em>one</em> program file. Multiple files must be concatenated externally.</li>
-  <li>Inside <code>.wppl</code>, Node's <code>require</code> is not in scope — file I/O must happen in the host wrapper.</li>
-  <li><code>parseInt</code> and <code>Number</code> silently abort the CPS-transformed program. Use <code>JSON.parse</code> or arithmetic coercion (e.g. <code>s * 1</code>) instead.</li>
-  <li>Methods supported by <code>Infer</code>: <code>rejection</code> (exact, slow for tight conditions), <code>MCMC</code>, <code>SMC</code>, etc.</li>
+  <li><code>{sport}_per_scenario.png</code> &mdash; 2&times;4 grid, one
+      subplot per test scenario (the 8th panel is empty when T=7), each
+      showing the 8 queries as points with error bars (MSA std across runs
+      on x, gold SEM on y). R² annotated.</li>
+  <li><code>{sport}_by_query_type.png</code> &mdash; 3 panels for the
+      query-type stratification used in Fig 6 of the paper:
+      <strong>constant</strong> (q1&ndash;3, intrinsic rank),
+      <strong>temporal</strong> (q4&ndash;6, in-match effort/accuracy),
+      <strong>prediction</strong> (q7&ndash;8, new-match outcomes). Each
+      panel pools the T scenarios for that group, color-coded by scenario.</li>
 </ul>
 
-<h2>Intermediates &mdash; debugging the formalize pipeline</h2>
+<h3><code>compare_samples.py</code></h3>
 
-<p>For each <code>formalize()</code> invocation, every LLM call is logged to
-<code>intermediates/{method}/{scenario}/</code>:</p>
-<table>
-<tr><th>File</th><th>Contents</th></tr>
-<tr><td><code>1_parse_prompt.txt</code></td>
-    <td>Full prompt sent for step 1 (template + in-context examples + target scenario).</td></tr>
-<tr><td><code>1_parse_response.txt</code></td>
-    <td>Raw LLM response.</td></tr>
-<tr><td><code>1_parse_block.txt</code></td>
-    <td>Extracted <code>&lt;START_LANGUAGE_TO_WEBPPL_CODE&gt;...&lt;END_…&gt;</code>
-        block, with markers, ready to feed into step 2.</td></tr>
-<tr><td><code>2_graph_{k}.txt</code></td>
-    <td>For each of <code>k_graph</code> candidates: extracted
-        <code>&lt;START_SCRATCHPAD&gt;...&lt;END_…&gt;</code> block plus the
-        raw scoring response. First line is <code># Score: &lt;0-10&gt;</code>.</td></tr>
-<tr><td><code>2_graph_{k}_response.txt</code></td>
-    <td>Only present if extraction failed; holds the raw response for that
-        sample so you can see why the markers were missing.</td></tr>
-<tr><td><code>2_graph_best.txt</code></td>
-    <td>The winning graph, with its index and score in a comment header.</td></tr>
-<tr><td><code>3_model_prompt.txt</code></td>
-    <td>Full prompt sent for step 3.</td></tr>
-<tr><td><code>3_model_response.txt</code></td>
-    <td>Raw LLM response.</td></tr>
-<tr><td><code>3_model.wppl</code></td>
-    <td>Extracted model body, markers stripped &mdash; what
-        <code>formalize()</code> returns.</td></tr>
-</table>
+<p>Single-pair distributional comparison
+(<code>python compare_samples.py --method1 ... --method2 ... --model X</code>).
+For each query: 2&times;1 panel histogram, KS p-value, permutation-test
+p-value on Wasserstein, JS distance. Writes
+<code>comparisons/{m1}_vs_{m2}/{model}/comparison.html</code> with the per-query
+metrics table at the top. The JS-distance noise floor at N=1000, K=30 bins
+is ~0.10 (see <a href="jsd.tex"><code>docs/jsd.tex</code></a> for the
+derivation).</p>
 
 <h2>Smoke test</h2>
 
-<p><code>test/msa_smoke.py</code> runs the full pipeline on tug with
-<code>--llm flash --k-graph 1 --expt smoke</code>, which is ~3 LLM calls total
-and finishes in seconds. Use it as a fast end-to-end check whenever you
-change the prompts, the wrapper logic, or the comparison code; outputs land
-at <code>models/msa_flash_smoke/</code>, <code>samples/msa_flash_smoke/</code>,
-and <code>comparisons/gold1_vs_msa_flash_smoke/tug/</code>.</p>
-
-<h2>Stage 3: comparison</h2>
-
-<h3><code>compare_samples.py</code></h3>
-<pre><code>python compare_samples.py --model {model}      \
-                          --method1 {m1}       \
-                          --method2 {m2}       \
-                          [--bins 30]</code></pre>
-
-<p>Reads <code>samples/{m1}/{model}.json</code> and
-<code>samples/{m2}/{model}.json</code>, then for each query writes a
-2&times;1 panel histogram and computes:</p>
-<ul>
-  <li><strong>Jensen&ndash;Shannon distance</strong> &mdash; bin-based, in <code>[0,1]</code> bits. 0 = identical histograms; 1 = disjoint supports.</li>
-  <li><strong>Wasserstein (Earth-Mover) distance</strong> &mdash; on raw samples, in the unit of the query.</li>
-</ul>
-
-<p>Outputs are written to <code>comparisons/{m1}_vs_{m2}/{model}/</code>:</p>
-<ul>
-  <li><code>query{q}.png</code> &mdash; one per query, top panel = <code>m1</code>, bottom panel = <code>m2</code>, shared axes.</li>
-  <li><code>jsd.png</code> &mdash; bar chart of JS distance per query.</li>
-  <li><code>comparison.html</code> &mdash; index page embedding all figures.</li>
-</ul>
-
-<h2>Stage 4: interpreting JS distance</h2>
-
-<p>The JS distance between two empirical histograms drawn from the
-<em>same</em> distribution has a non-zero expectation that depends only on
-the number of bins <i>K</i> and the sample size <i>N</i>:</p>
-
-<p style="text-align:center; font-size:1.1em;">
-  E[JS dist] &asymp; &radic;<span style="text-decoration: overline;">(K&minus;1.5) / (4 N ln 2)</span>
-</p>
-
-<p>For <i>N</i>=1000, <i>K</i>=30 (our default) this evaluates to <strong>~0.10</strong>,
-which is exactly the floor observed when comparing two independent
-gold-vs-gold runs (<code>gold</code> vs <code>gold1</code>). See
-<a href="jsd.tex"><code>docs/jsd.tex</code></a> for the derivation.</p>
-
-<p>The implication: <strong>JS distance &lt; ~0.10 is consistent with the same
-distribution at these settings, and is not itself evidence of agreement
-or disagreement</strong>. Use it as a relative magnitude across queries,
-not as an absolute test.</p>
+<p><code>test/msa_smoke.py</code> runs the full pipeline on the first
+tug-of-war E1 test scenario with <code>--llm flash --n-runs 1 --k-graph 1
+--expt 1</code>. About 3 LLM calls + 2 WebPPL inferences, ~30s
+end-to-end. Use this whenever you change prompts, pipeline plumbing, or
+the comparison code. Subsequent runs return in &lt;1s thanks to the
+cache; pass <code>--force</code> to revalidate from scratch.</p>
 
 <h2>Recommended P-vs-Q test</h2>
 
-<p>If the goal is to decide whether two methods produce samples from the
-same posterior (per query), a few options are stronger than thresholding
-JS distance:</p>
-
-<table>
-<tr><th>Test</th><th>What it does</th><th>When to use</th></tr>
-<tr>
-  <td><strong>Two-sample Kolmogorov&ndash;Smirnov</strong> (<code>scipy.stats.ks_2samp</code>)</td>
-  <td>Largest gap between empirical CDFs of the raw samples. No binning. Returns a p-value automatically calibrated for <i>N</i>.</td>
-  <td>Default per-query test. Cheap, parameter-free.</td>
-</tr>
-<tr>
-  <td><strong>Permutation test on Wasserstein distance</strong></td>
-  <td>Compute observed Wasserstein on raw samples; pool the two samples and randomly relabel many times to build a null distribution; report p-value.</td>
-  <td>When you want a metric whose magnitude is interpretable (in the unit of the query) plus calibrated p-value.</td>
-</tr>
-<tr>
-  <td><strong>Anderson&ndash;Darling 2-sample</strong> (<code>scipy.stats.anderson_ksamp</code>)</td>
-  <td>Like KS but weights tails more.</td>
-  <td>When tail behaviour matters (e.g. rare-event queries).</td>
-</tr>
-<tr>
-  <td><strong>MMD with Gaussian kernel + permutation</strong></td>
-  <td>Kernel two-sample test; multivariate-friendly.</td>
-  <td>If you want to test joint agreement across queries, not just marginal.</td>
-</tr>
-</table>
-
-<h3>On the gold-vs-gold yardstick</h3>
-
-<p>The current experiment (<code>gold</code> vs <code>gold1</code>) is a useful
-sanity check: it measures the noise floor under the null. But because
-<em>any</em> reasonable test should fail to reject in this case, the
-<em>magnitude</em> of the gold-vs-gold gap mostly tells you about your
-test's variance, not its discriminative power. A more informative
-yardstick is to:</p>
-<ol>
-  <li>Estimate the null distribution of your chosen test statistic by
-      splitting one large gold run into halves repeatedly (or running
-      with many seeds) &mdash; this gives a calibrated cutoff at any
-      desired false-positive rate.</li>
-  <li>Apply the same statistic to <code>gold</code> vs whatever alternative
-      method you actually care about. Compare to the null cutoff.</li>
-</ol>
-<p>If you only need one number, <code>ks_2samp</code> per query plus a
-Bonferroni-corrected family p-value is probably the cleanest move.</p>
+<p>JS distance has a non-trivial noise floor at our settings. For deciding
+whether two methods produce samples from the same posterior:</p>
+<ul>
+  <li><strong>Per-query</strong>: two-sample Kolmogorov&ndash;Smirnov
+      (<code>scipy.stats.ks_2samp</code>) on raw samples &mdash; no binning,
+      calibrated p-value.</li>
+  <li><strong>Effect size</strong>: Wasserstein distance plus a permutation
+      test for its p-value.</li>
+  <li><strong>Family-level</strong>: histogram of per-query p-values across
+      queries (uniform on [0, 1] under H<sub>0</sub>).</li>
+  <li><strong>Yardstick</strong>: gold-vs-gold1 gives a noise-floor baseline
+      &mdash; e.g. ~0.10 JSD for N=1000, K=30 bins.</li>
+</ul>
 
 </body>
 </html>

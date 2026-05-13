@@ -1,0 +1,106 @@
+var queryLabels = {
+  query1: "Out of 100 random athletes, where do you think Peyton ranks in terms of intrinsic strength?",
+  query2: "Out of 100 random athletes, where do you think Avery ranks in terms of intrinsic strength?",
+  query3: "Out of 100 random athletes, where do you think Blake ranks in terms of intrinsic strength?",
+  query4: "On a percentage scale from 0 to 100%, how much effort do you think Peyton put into the second match?",
+  query5: "On a percentage scale from 0 to 100%, how much effort do you think Avery put into the second match?",
+  query6: "On a percentage scale from 0 to 100%, how much effort do you think Blake put into the second match?",
+  query7: "In a new match later this same day between Peyton and Avery (Team 1) and Blake and Gale (Team 2), who would win and by how much?",
+  query8: "In a new match later this same day between Peyton and Blake (Team 1) and Avery and Gale (Team 2), who would win and by how much?"
+};
+
+var model = function() {
+    // BACKGROUND KNOWLEDGE
+    // An athlete’s intrinsic strength remains constant throughout a tournament. 
+    // It varies somewhat widely from athlete to athlete.
+    var intrinsic_strength = mem(function ({athlete}) {
+      // We'll model strength on an arbitrary scale centered around 100.
+      var parameter_intrinsic_strength_average = 100;
+      var parameter_intrinsic_strength_variance = 20;
+      return Math.max(gaussian(parameter_intrinsic_strength_average, parameter_intrinsic_strength_variance), 10);
+    });
+
+    // An athlete's intrinsic strength ranking out of n other athletes.
+    var intrinsic_strength_rank = function({athlete, out_of_n_athletes}) {
+        var random_athlete_ids = mapN(function(x) {return "random_athlete_" + x}, out_of_n_athletes - 1);
+        return sum(map(
+            function(random_athlete_id) {
+              return intrinsic_strength({athlete: athlete}) > intrinsic_strength({athlete: random_athlete_id})
+            }, random_athlete_ids));
+    };
+
+    // Athletes also vary in the effort that they put into any given match. 
+    // Most of the time, people pull with a moderately high amount of effort. 
+    // Sometimes, an athlete won’t put in much effort (fraction) or put in a lot (extra hard).
+    var effort_level_in_match = mem(function({athlete, match}) {
+      // Effort is modeled as a percentage of their intrinsic strength (0-150%).
+      // We use a categorical distribution to represent the three states described.
+      var effort_types = ['low', 'moderate', 'high'];
+      var effort_probs = [0.15, 0.70, 0.15];
+      var effort_type = categorical({ps: effort_probs, vs: effort_types});
+      
+      var effort_mean = (effort_type == 'low') ? 60 : 
+                        (effort_type == 'moderate') ? 100 : 130;
+      var effort_variance = 10;
+      
+      return Math.min(Math.max(gaussian(effort_mean, effort_variance), 0), 150);
+    });
+
+    // How hard each athlete pulls in a given match is determined by their intrinsic strength, 
+    // modified by how much effort they put in.
+    var individual_pulling_power_in_match = function({athlete, match}) {
+      var strength = intrinsic_strength({athlete: athlete});
+      var effort_multiplier = effort_level_in_match({athlete: athlete, match: match}) / 100.0;
+      return strength * effort_multiplier;
+    };
+
+    // How hard a team pulls overall in any given match is determined by the total amount 
+    // that all of the athletes on the team pull in that match.
+    var total_team_pull_in_match = function({team, match}) {
+      return sum(map(function(athlete) { 
+        return individual_pulling_power_in_match({athlete: athlete, match: match}) 
+      }, team));
+    };
+
+    // The team that pulls the hardest in a given match wins.
+    var beat = function({team1, team2, match}) {
+      return total_team_pull_in_match({team: team1, match: match}) > total_team_pull_in_match({team: team2, match: match});
+    };
+
+    // A team loses if they did not beat the other team.
+    var lost = function({team1, team2, match}) {
+      return !beat({team1: team1, team2: team2, match: match});
+    };
+
+    // To calculate who would win and by how much, we calculate the likelihood that team 2 wins.
+    var who_would_win_by_how_much = function({team1, team2, match}) {
+      var num_simulations = 100;
+      var future_match_ids = mapN(function(x) {return match + 100 + x}, num_simulations);
+      
+      var team2_wins = sum(map(function(m_id) {
+        return lost({team1: team1, team2: team2, match: m_id}) ? 1 : 0;
+      }, future_match_ids));
+      
+      return team2_wins / num_simulations;
+    };
+
+    // CONDITIONS
+    // In the first match, Peyton and Avery lost to Blake and Casey.
+    condition(lost({team1: ['peyton', 'avery'], team2: ['blake', 'casey'], match: 1}))
+    // In the second match, Peyton and Blake lost to Avery and Casey.
+    condition(lost({team1: ['peyton', 'blake'], team2: ['avery', 'casey'], match: 2}))
+    // In the third match, Peyton and Casey lost to Avery and Blake.
+    condition(lost({team1: ['peyton', 'casey'], team2: ['avery', 'blake'], match: 3}))
+
+    // QUERIES
+    return {
+        query1: intrinsic_strength_rank({athlete: 'peyton', out_of_n_athletes: 100}),
+        query2: intrinsic_strength_rank({athlete: 'avery', out_of_n_athletes: 100}),
+        query3: intrinsic_strength_rank({athlete: 'blake', out_of_n_athletes: 100}),
+        query4: effort_level_in_match({athlete: 'peyton', match: 2}),
+        query5: effort_level_in_match({athlete: 'avery', match: 2}),
+        query6: effort_level_in_match({athlete: 'blake', match: 2}),
+        query7: who_would_win_by_how_much({team1: ['peyton', 'avery'], team2: ['blake', 'gale'], match: 4}),
+        query8: who_would_win_by_how_much({team1: ['peyton', 'blake'], team2: ['avery', 'gale'], match: 5})
+    };
+};
